@@ -140,10 +140,10 @@ async function updateVisibility(location, request) {
 
 const leafletCSS=document.createElement('link');
 leafletCSS.rel='stylesheet';
-leafletCSS.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
+leafletCSS.href='vendor/leaflet.css';
 leafletCSS.onload=()=>{
   const script=document.createElement('script');
-  script.src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+  script.src='vendor/leaflet.js';
   script.onload=map;
   document.head.append(script);
 };
