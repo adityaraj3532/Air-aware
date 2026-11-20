@@ -13,6 +13,9 @@ function safetyStatus(title, detail) {
   $('alert-title').textContent = title;
   $('alert-detail').textContent = detail;
   $('alert-title').parentElement.style.setProperty('--severity', '#bbc9bf');
+  const card = $('precaution-context').closest('.precautions');
+  card.style.removeProperty('--advisory-color');
+  card.classList.remove('elevated');
   $('precaution-context').textContent = detail;
   $('tips').hidden = true;
 }
@@ -28,6 +31,9 @@ function showPrecautions(value, time) {
   const title = sample ? 'Sample pollution outlook' : level >= 2 ? 'Pollution alert' : 'No elevated pollution alert';
   safetyStatus(title, context);
   $('alert-title').parentElement.style.setProperty('--severity', colors[level]);
+  const card = $('precaution-context').closest('.precautions');
+  card.style.setProperty('--advisory-color', colors[level]);
+  card.classList.toggle('elevated', level >= 2);
   $('precaution-context').textContent = (sample ? 'Example precautions · ' : '')+context;
   $('advice').textContent = precautions[level][0];
   $('sensitive').textContent = precautions[level][1];
