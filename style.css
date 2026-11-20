@@ -4,3 +4,78 @@
 .features{display:flex;gap:6px;flex-wrap:wrap;background:#e6ede5;padding:6px;border-radius:11px;margin:0 0 18px}.features button{background:transparent;color:#325641;font-weight:600}.features [aria-pressed=true]{background:#215940;color:white}.feature-panel{padding:clamp(20px,4vw,44px);min-height:290px}.feature-panel form{margin:16px 0}.feature-panel #best:not(:empty),.feature-panel #comparison:not(:empty){background:#eef5ed;padding:12px;border-radius:7px}.feature-panel[hidden],#dashboard-view[hidden]{display:none}
 .tiles{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin:12px 0 22px}.tiles span{display:grid;gap:4px;padding:8px;border-radius:5px;background:#eff4ed;font-size:13px}.reason{margin-top:14px}.reason label{display:inline-flex;gap:8px;margin-top:10px}.reason select{padding:4px}.feature-panel details{padding:9px;border-bottom:1px solid #dae2d9}.feature-panel summary{cursor:pointer}#answers button{margin:4px}#language{padding:3px 8px}@media(max-width:720px){.tiles{grid-template-columns:repeat(4,1fr)}}
 #calendar{grid-template-columns:repeat(7,minmax(0,1fr))}#calendar span{padding:4px;overflow-wrap:anywhere}
+
+/* Atmospheric dashboard theme */
+:root {
+  --ink: #102e31;
+  --ocean: #095b5e;
+  --edge: #cfdddc;
+  --lift: 0 12px 32px rgba(17, 61, 65, .09);
+}
+body {
+  font-family: Inter, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: radial-gradient(ellipse at 94% 4%, #dbefe9, transparent 38rem), #f3f7f6;
+}
+header {background:#103338;color:#f4fbf9;border:0}
+.brand span {color:#95dfc5}
+.brand i {background:#285257;color:#a5f4d5;border-radius:12px}
+header nav {align-items:center}
+header nav a {color:#e0eeea}
+.heading {padding:clamp(24px,4vw,48px) 0 22px}
+.heading small,.card small {color:#1b7367}
+h1 {letter-spacing:-.052em;font-weight:750}
+.features {
+  background:#fff;border:1px solid var(--edge);border-radius:16px;
+  padding:6px;gap:3px;box-shadow:0 3px 14px #123b3b09;
+}
+.features button {border-radius:11px;color:#3f5a59;padding:10px 14px}
+.features [aria-pressed=true],button {background:var(--ocean)}
+.features [aria-pressed=false] {background:transparent}
+.hero {
+  padding:clamp(24px,3.4vw,44px);min-height:194px;border-radius:22px;
+  background:radial-gradient(ellipse at 78% 108%,#187a72,transparent 60%),linear-gradient(115deg,#092f38,#145451);
+  box-shadow:var(--lift);
+}
+.hero canvas {opacity:.74}
+.hero small {color:#b2e9d8}
+.reading strong {font-variant-numeric:tabular-nums;font-size:clamp(56px,7vw,84px);letter-spacing:-.07em}
+.card {border-color:var(--edge);border-radius:20px;box-shadow:0 4px 20px #183e4007}
+.air-alert {background:#fff;border-radius:14px}
+#dashboard-view {display:flex;flex-direction:column}
+#dashboard-view[hidden] {display:none}
+#dashboard-view .hero {order:0}
+#dashboard-view .air-alert {order:1}
+#dashboard-view .grid {order:2}
+#dashboard-view .reason {order:3;margin:0 0 16px}
+#dashboard-view .precautions {order:4}
+#map {border-radius:13px}
+.reason select,.tools select,.tools input,.location-tools form {border:1px solid var(--edge);border-radius:9px}
+.features button,button,.card,.tiles span,summary,header nav a {
+  transition:transform .18s ease,box-shadow .18s ease,background-color .18s ease,border-color .18s ease;
+}
+:where(a,button,select,input,summary):focus-visible {outline:3px solid #dd961a;outline-offset:3px}
+@media (hover:hover) and (pointer:fine) {
+  .features button[aria-pressed=false]:hover {background:#e4f3ef;color:#094d48}
+  button:not(:disabled):not(.pin):hover {transform:translateY(-2px);box-shadow:0 4px 10px #103c381e}
+  .pin:hover,.pin:focus-visible {transform:translate(-50%,-50%) scale(1.14);z-index:1}
+  .card:hover {box-shadow:var(--lift);border-color:#adc9c3}
+  .tiles span:hover {transform:translateY(-3px);box-shadow:0 5px 12px #133b371a}
+  summary:hover {color:var(--ocean)}
+}
+@keyframes panel-enter {from {opacity:0;transform:translateY(6px)} to {opacity:1;transform:translateY(0)}}
+.feature-panel:not([hidden]),#dashboard-view:not([hidden]) {animation:panel-enter .24s ease-out}
+@media(max-width:760px){
+  .features {flex-wrap:nowrap;overflow:auto;scrollbar-width:thin}
+  .features button {white-space:nowrap}
+  .hero {align-items:center;gap:10px}
+  .hero h2 {overflow-wrap:anywhere}
+  header nav {gap:9px}
+  .bar {width:96%}
+}
+@media(max-width:420px){header nav a{display:none}.hero{padding:19px}.reading b{text-align:right}}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  button:not(.pin):hover,.tiles span:hover{transform:none!important}
+}
