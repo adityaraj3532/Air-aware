@@ -135,3 +135,27 @@ h1 {letter-spacing:-.052em;font-weight:750}
   #dashboard-view #trendcard {order:4;margin-bottom:16px}
   #dashboard-view .reason {order:5}
 }
+
+/* Navy and teal dashboard */
+:root {color-scheme:dark;--ink:#e5edf7;--ocean:#21c79d;--edge:#2a384a;--lift:0 12px 32px #02081026}
+body {background:radial-gradient(ellipse at 15% 12%,#0e2431,transparent 44rem),#0b1729}
+header {background:#0a182b;border-bottom:1px solid #1d2a3a}
+.bar {height:64px}
+.brand span,.heading small,.card small,.hero small,.location-tools #locate {color:var(--ocean)}
+.brand i {background:var(--ocean);color:#09212c}
+header nav a,p,.hero p,.features button,.tabs button,footer {color:#a6b6cb}
+.heading h1,.reading strong {color:#74dfc8;background:linear-gradient(110deg,#e1eef5,#33c9a2);background-clip:text;-webkit-text-fill-color:transparent}
+.features,.card,.guide,.location-tools form,#results:not(:empty) {background:#172437;border-color:var(--edge)}
+.features {margin-bottom:22px;border-radius:20px}
+button,.features [aria-pressed=true],.tabs [aria-pressed=true] {background:var(--ocean);color:#081b25}
+#language,.location-tools #locate {background:transparent;border:1px solid var(--edge);border-radius:8px;color:#a9bccf}
+.location-tools #locate {color:var(--ocean)}
+input,select,.reason select,.tools select,.tools input {color:var(--ink)}
+#results button,.tools form {background:#172437;color:var(--ink)}
+#results button:hover,#results button:focus-visible {background:#27394c}
+.hero {background:radial-gradient(ellipse at 58% 90%,#10494e,transparent 78%),#0d2b3b;border:1px solid #144451;border-radius:26px;min-height:clamp(180px,19vw,260px)}
+.hero .reading small {color:#a2b5c6}
+.air-alert,.tabs,#summary,.reason select,.tools select,.tools input,.tiles span,.feature-panel #best:not(:empty),.feature-panel #comparison:not(:empty) {background:#202d40;color:var(--ink);border-color:var(--edge)}
+.air-alert {border-inline-start-color:var(--severity)}
+footer a {color:var(--ocean)}
+@media(max-width:760px){.bar{height:58px}}
