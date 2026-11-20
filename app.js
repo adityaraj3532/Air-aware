@@ -1,5 +1,5 @@
 const $=id=>document.getElementById(id);
-const colors=['#69c486','#f1cf59','#f49a50','#ee6866','#b87bba','#b35977'];
+const colors=['#69c486','#f1cf59','#f49a50','#ee5089','#b87bba','#b35977'];
 const cats=['Good','Moderate','Sensitive groups','Unhealthy','Very unhealthy','Hazardous'];
 const precautions = [
   ['Enjoy your usual walk, run or outdoor play.', 'Most people can follow their usual outdoor routine.'],
@@ -40,6 +40,7 @@ async function json(url){const r=await fetch(url,{signal:AbortSignal.timeout(850
 function api(lat,lon,extra){return 'https://air-quality-api.open-meteo.com/v1/air-quality?latitude='+lat+'&longitude='+lon+'&current=us_aqi&timeformat=unixtime'+extra}
 $('legend').innerHTML=cats.map((c,i)=>'<span><i style="background:'+colors[i]+'"></i>'+c+' '+['0–50','51–100','101–150','151–200','201–300','301+'][i]+'</span>').join('');
 function world(lat,lon){const n=256*2**zoom,r=Math.min(85,Math.max(-85,lat))*Math.PI/180;return [(lon+180)/360*n,(1-Math.asinh(Math.tan(r))/Math.PI)/2*n]}
+let zoneLayer, summaryPanel;
 let streetMap, markerLayer, mappedLocation, markerSignature;
 function map(){
   if(!window.L){fallbackMap();return}
@@ -47,18 +48,29 @@ function map(){
   if(!element.clientWidth)return;
   if(!streetMap){
     element.replaceChildren();
-    element.parentElement.querySelector('p').textContent='Shaded cells show estimated US AQI at their centers. Tap a cell for its reading.';
-    element.style.height='clamp(350px,48vh,540px)';
-    streetMap=L.map(element,{scrollWheelZoom:false}).setView([city[2],city[3]],10);
-    const streets=L.tileLayer('https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · © <a href="https://carto.com/attributions">CARTO</a>'}).addTo(streetMap);
-    L.control.scale({imperial:false}).addTo(streetMap);
+    element.parentElement.querySelector('p').textContent='Tap a reading to explore air quality around the selected location.';
+    element.style.height='clamp(440px,62vh,670px)';
+    streetMap=L.map(element,{scrollWheelZoom:false,zoomControl:false}).setView([city[2],city[3]],10);
+    const streets=L.tileLayer('https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · © <a href="https://carto.com/attributions">CARTO</a>'}).addTo(streetMap);
+    L.control.zoom({position:'topright'}).addTo(streetMap);
+    zoneLayer=L.layerGroup();
+    const summary=L.control({position:'bottomleft'});
+    summary.onAdd=()=>{
+      summaryPanel=L.DomUtil.create('section','map-reading');
+      summaryPanel.setAttribute('aria-live','polite');
+      L.DomEvent.disableClickPropagation(summaryPanel);
+      return summaryPanel;
+    };
+    summary.addTo(streetMap);
     markerLayer=L.layerGroup().addTo(streetMap);
     const control=L.control({position:'topright'});
     control.onAdd=()=>{
       const box=L.DomUtil.create('div','leaflet-bar');
       const button=document.createElement('button');button.textContent='Recenter';button.type='button';
       button.onclick=()=>{if(points.length>1)streetMap.fitBounds(points.map(([lat,lon])=>[lat,lon]),{padding:[30,30],maxZoom:12});else streetMap.setView([city[2],city[3]],10)};
-      box.append(button);L.DomEvent.disableClickPropagation(box);return box;
+      const zones=document.createElement('button');zones.textContent='AQI zones';zones.setAttribute('aria-pressed','false');
+      zones.onclick=()=>{const show=!streetMap.hasLayer(zoneLayer);if(show)zoneLayer.addTo(streetMap);else streetMap.removeLayer(zoneLayer);zones.setAttribute('aria-pressed',String(show))};
+      box.append(button,zones);L.DomEvent.disableClickPropagation(box);return box;
     };
     control.addTo(streetMap);
     const status=document.createElement('p');
@@ -79,16 +91,23 @@ function map(){
   if(location!==mappedLocation){streetMap.setView([city[2],city[3]],10);mappedLocation=location}
   const signature=JSON.stringify([location,points,sample]);
   if(signature===markerSignature)return;
-  markerSignature=signature;markerLayer.clearLayers();
+  markerSignature=signature;markerLayer.clearLayers();zoneLayer.clearLayers();
+  function showReading(point){
+    const address=document.createElement('strong');address.textContent=city.slice(0,2).filter(Boolean).join(', ');
+    const detail=document.createElement('span');detail.textContent=point?(sample?'Sample':'Estimated')+' US AQI · '+point[0].toFixed(3)+'°, '+point[1].toFixed(3)+'°':'Waiting for AQI data';
+    summaryPanel.replaceChildren(address,detail);
+    if(point){const value=point[2],score=document.createElement('b'),badge=document.createElement('em');score.textContent=value;badge.textContent=cats[band(value)];summaryPanel.style.setProperty('--aq-color',colors[band(value)]);summaryPanel.append(score,badge)}
+  }
+  showReading(points[0]);
   for(const [lat,lon,value] of points){
     const label=(sample?'Sample':'Estimated')+' US AQI '+value+' · '+cats[band(value)];
     const color=colors[band(value)];
     const zone=L.rectangle([[Math.max(-85,lat-.06),lon-.08],[Math.min(85,lat+.06),lon+.08]],{
       color, weight:1, fillColor:color, fillOpacity:.52
-    }).addTo(markerLayer);
-    zone.bindTooltip(label).bindPopup(label+'<br>Area shaded by its center-point estimate.');
-    const icon=L.divIcon({className:'aq-marker',html:'<b style="display:grid;place-items:center;height:100%;border-radius:20px;border:3px solid white;box-shadow:0 2px 8px #29403266;color:#172d23;background:'+colors[band(value)]+'">'+value+'</b>',iconSize:[46,32],iconAnchor:[23,16]});
-    L.marker([lat,lon],{icon,title:label,alt:label}).bindPopup(label+'<br>'+lat.toFixed(3)+'°, '+lon.toFixed(3)+'°').addTo(markerLayer);
+    }).addTo(zoneLayer);
+    zone.bindTooltip(label).on('click',()=>showReading([lat,lon,value]));
+    const icon=L.divIcon({className:'aq-marker',html:'<b style="--aq-color:'+color+'">'+value+'</b>',iconSize:[36,36],iconAnchor:[18,18]});
+    L.marker([lat,lon],{icon,title:label,alt:label}).on('click',()=>showReading([lat,lon,value])).addTo(markerLayer);
   }
 }
 function fallbackMap(){const el=$('map'),w=el.clientWidth,h=el.clientHeight,[cx,cy]=world(city[2],city[3]),left=cx-w/2,top=cy-h/2,tiles=$('tiles');tiles.replaceChildren();el.querySelector('.credit').textContent='© OpenStreetMap · CARTO';$('mapnote').textContent='';for(let x=Math.floor(left/256);x<=Math.floor((left+w)/256);x++)for(let y=Math.floor(top/256);y<=Math.floor((top+h)/256);y++){if(y<0||y>=2**zoom)continue;const img=document.createElement('img');img.alt='';img.style.left=(x*256-left)+'px';img.style.top=(y*256-top)+'px';img.onerror=()=>{if(!img.isConnected)return;if(!img.dataset.retried){img.dataset.retried='yes';img.src=img.src.replace('tile.openstreetmap.org','basemaps.cartocdn.com/rastertiles/voyager');return}img.hidden=true;const note=$('mapnote');if(note)note.textContent='Base map offline · coordinate grid'};img.src='https://tile.openstreetmap.org/'+zoom+'/'+((x+2**zoom)%2**zoom)+'/'+y+'.png';tiles.append(img)}
