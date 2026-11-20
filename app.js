@@ -40,7 +40,41 @@ async function json(url){const r=await fetch(url,{signal:AbortSignal.timeout(850
 function api(lat,lon,extra){return 'https://air-quality-api.open-meteo.com/v1/air-quality?latitude='+lat+'&longitude='+lon+'&current=us_aqi&timeformat=unixtime'+extra}
 $('legend').innerHTML=cats.map((c,i)=>'<span><i style="background:'+colors[i]+'"></i>'+c+'</span>').join('');
 function world(lat,lon){const n=256*2**zoom,r=Math.min(85,Math.max(-85,lat))*Math.PI/180;return [(lon+180)/360*n,(1-Math.asinh(Math.tan(r))/Math.PI)/2*n]}
-function map(){const el=$('map'),w=el.clientWidth,h=el.clientHeight,[cx,cy]=world(city[2],city[3]),left=cx-w/2,top=cy-h/2,tiles=$('tiles');tiles.replaceChildren();$('mapnote').textContent='';for(let x=Math.floor(left/256);x<=Math.floor((left+w)/256);x++)for(let y=Math.floor(top/256);y<=Math.floor((top+h)/256);y++){if(y<0||y>=2**zoom)continue;const img=document.createElement('img');img.alt='';img.style.left=(x*256-left)+'px';img.style.top=(y*256-top)+'px';img.onerror=()=>{img.hidden=true;$('mapnote').textContent='Base map offline · coordinate grid'};img.src='https://tile.openstreetmap.org/'+zoom+'/'+((x+2**zoom)%2**zoom)+'/'+y+'.png';tiles.append(img)}
+let streetMap, markerLayer, mappedLocation, markerSignature;
+function map(){
+  if(!window.L){fallbackMap();return}
+  const element=$('map');
+  if(!element.clientWidth)return;
+  if(!streetMap){
+    element.replaceChildren();
+    element.style.height='clamp(350px,48vh,540px)';
+    streetMap=L.map(element,{scrollWheelZoom:false}).setView([city[2],city[3]],10);
+    const streets=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(streetMap);
+    L.control.scale({imperial:false}).addTo(streetMap);
+    markerLayer=L.layerGroup().addTo(streetMap);
+    const control=L.control({position:'topright'});
+    control.onAdd=()=>{
+      const box=L.DomUtil.create('div','leaflet-bar');
+      const button=document.createElement('button');button.textContent='Recenter';button.type='button';
+      button.onclick=()=>{if(points.length>1)streetMap.fitBounds(points.map(([lat,lon])=>[lat,lon]),{padding:[30,30],maxZoom:12});else streetMap.setView([city[2],city[3]],10)};
+      box.append(button);L.DomEvent.disableClickPropagation(box);return box;
+    };
+    control.addTo(streetMap);
+    streets.on('tileerror',()=>{element.title='Street tiles could not load. Check your connection.'});
+  }
+  streetMap.invalidateSize({pan:false});
+  const location=city.slice(2).join(',');
+  if(location!==mappedLocation){streetMap.setView([city[2],city[3]],10);mappedLocation=location}
+  const signature=JSON.stringify([location,points,sample]);
+  if(signature===markerSignature)return;
+  markerSignature=signature;markerLayer.clearLayers();
+  for(const [lat,lon,value] of points){
+    const label=(sample?'Sample':'Estimated')+' US AQI '+value+' · '+cats[band(value)];
+    const icon=L.divIcon({className:'aq-marker',html:'<b style="display:grid;place-items:center;height:100%;border-radius:20px;border:3px solid white;box-shadow:0 2px 8px #29403266;color:#172d23;background:'+colors[band(value)]+'">'+value+'</b>',iconSize:[46,32],iconAnchor:[23,16]});
+    L.marker([lat,lon],{icon,title:label,alt:label}).bindPopup(label+'<br>'+lat.toFixed(3)+'°, '+lon.toFixed(3)+'°').addTo(markerLayer);
+  }
+}
+function fallbackMap(){const el=$('map'),w=el.clientWidth,h=el.clientHeight,[cx,cy]=world(city[2],city[3]),left=cx-w/2,top=cy-h/2,tiles=$('tiles');tiles.replaceChildren();$('mapnote').textContent='';for(let x=Math.floor(left/256);x<=Math.floor((left+w)/256);x++)for(let y=Math.floor(top/256);y<=Math.floor((top+h)/256);y++){if(y<0||y>=2**zoom)continue;const img=document.createElement('img');img.alt='';img.style.left=(x*256-left)+'px';img.style.top=(y*256-top)+'px';img.onerror=()=>{img.hidden=true;$('mapnote').textContent='Base map offline · coordinate grid'};img.src='https://tile.openstreetmap.org/'+zoom+'/'+((x+2**zoom)%2**zoom)+'/'+y+'.png';tiles.append(img)}
 $('markers').replaceChildren();for(const [lat,lon,val] of points){const [x,y]=world(lat,lon),b=document.createElement('button');b.className='pin';b.style.cssText='left:'+(x-left)+'px;top:'+(y-top)+'px;background:'+colors[band(val)];b.textContent=val;b.title=(sample?'Sample':'Estimated')+' US AQI at '+lat.toFixed(2)+', '+lon.toFixed(2);b.onclick=()=>{$('mapnote').textContent=b.title+' · '+cats[band(val)]};$('markers').append(b)}}
 function plot(){const data=history.slice(-hours),svg=$('plot');if(!data.length){svg.textContent='Hourly data unavailable.';$('summary').textContent='';return}const vals=data.map(p=>p[1]).filter(Number.isFinite);if(!vals.length){svg.textContent='Hourly data unavailable.';$('summary').textContent='';return}const max=Math.max(50,Math.ceil(Math.max(...vals)/50)*50),x=i=>38+360*i/Math.max(1,data.length-1),y=v=>128-104*v/max;let path='',pen=false;data.forEach((p,i)=>{if(!Number.isFinite(p[1])){pen=false;return}path+=(pen?'L':'M')+x(i)+' '+y(p[1]);pen=true});const ticks=[0,max/2,max].map(v=>'<path stroke="#dce6dc" d="M38 '+y(v)+'h360"/><text x="2" y="'+(y(v)+4)+'">'+v+'</text>').join('');const date=t=>new Date(t*1000).toLocaleString('en-GB',hours===24?{hour:'2-digit',minute:'2-digit',timeZone:'UTC'}:{month:'short',day:'numeric',timeZone:'UTC'});svg.innerHTML='<svg viewBox="0 0 410 160" role="img" aria-label="Hourly US AQI trend" fill="#546d60" font-size="12">'+ticks+'<path d="'+path+'" stroke="#28754e" stroke-width="3" fill="none"/><text x="38" y="151">'+date(data[0][0])+'</text><text text-anchor="end" x="398" y="151">'+date(data.at(-1)[0])+' UTC</text></svg>';$('summary').textContent=(sample?'Sample range':'AQI range')+' · '+Math.min(...vals)+'–'+Math.max(...vals)+' over '+(hours===24?'24 hours':'7 days')}
 function display(v,time){const i=band(v);$('aqi').textContent=v;$('category').textContent=i===2?'Unhealthy for sensitive groups':cats[i];$('category').style.background=colors[i];$('stamp').textContent=sample?'Sample data · live feed unavailable':(Math.abs(Date.now()/1000-time)>10800?'Delayed model estimate':'Current model estimate')+' · '+new Date(time*1000).toLocaleString();showPrecautions(v,time);explain(v,time);plot();map()}
@@ -92,3 +126,14 @@ async function updateVisibility(location, request) {
     if (request === version) line.textContent = 'Visibility estimate unavailable';
   }
 }
+
+const leafletCSS=document.createElement('link');
+leafletCSS.rel='stylesheet';
+leafletCSS.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
+leafletCSS.onload=()=>{
+  const script=document.createElement('script');
+  script.src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+  script.onload=map;
+  document.head.append(script);
+};
+document.head.append(leafletCSS);
