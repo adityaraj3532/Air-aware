@@ -110,15 +110,15 @@ h1 {letter-spacing:-.052em;font-weight:750}
 /* Keep the safety guidance legible across dashboard themes. */
 #dashboard-view .precautions {
   --advisory-color: #a9c6ca;
-  order: 2;
-  margin-top: 16px;
+  order: 3;
+  margin-bottom: 16px;
   padding: clamp(20px, 3vw, 32px);
   background: linear-gradient(115deg, #122e38, #142237 78%);
   color: #fff;
   border: 1px solid #506476;
   border-inline-start: 6px solid var(--advisory-color);
 }
-#dashboard-view .grid {order: 3}
+#dashboard-view .grid {order: 2}
 #dashboard-view .reason {order: 4}
 .precautions h2 {color: #fff;font-size: clamp(26px, 3vw, 34px)}
 .precautions #precaution-context {color: var(--advisory-color);font-size: 16px;font-weight: 650}
@@ -128,3 +128,10 @@ h1 {letter-spacing:-.052em;font-weight:750}
 .precautions.elevated #tips > div:last-child {border: 2px solid var(--advisory-color)}
 .precautions.elevated #tips > div:last-child h3 {color: var(--advisory-color)}
 .precautions > a {color: #a9e6e1;text-underline-offset: 3px}
+
+@media (max-width:760px) {
+  #dashboard-view .grid {display:contents}
+  #dashboard-view #mapcard {order:2;margin:16px 0}
+  #dashboard-view #trendcard {order:4;margin-bottom:16px}
+  #dashboard-view .reason {order:5}
+}
