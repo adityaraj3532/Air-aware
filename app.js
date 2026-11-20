@@ -16,6 +16,7 @@ function safetyStatus(title, detail) {
   const card = $('precaution-context').closest('.precautions');
   card.style.removeProperty('--advisory-color');
   card.classList.remove('elevated');
+  card.querySelector('.outdoor-window')?.remove();
   $('precaution-context').textContent = detail;
   $('tips').hidden = true;
 }
@@ -38,6 +39,32 @@ function showPrecautions(value, time) {
   $('advice').textContent = precautions[level][0];
   $('sensitive').textContent = precautions[level][1];
   $('tips').hidden = false;
+}
+function outdoorWindow() {
+  if (!reading || sample) return;
+  const now = Date.now()/1000;
+  const daytime = new Intl.DateTimeFormat('en-GB',{timeZone:zone,hour:'2-digit',hourCycle:'h23'});
+  const candidates = [...forecast].filter(([time,value]) => {
+    const hour = Number(daytime.format(time*1000));
+    return time >= now && time <= now+86400 && hour >= 6 && hour < 21 && Number.isFinite(value);
+  });
+  const panel = document.createElement('div');
+  panel.className = 'outdoor-window';
+  panel.style.cssText = 'border-top:1px solid #516678;margin-top:16px;padding:14px 0;color:white';
+  const title=document.createElement('h3'), body=document.createElement('p');
+  title.textContent=tr('When to go outside','बाहर कब जाएँ');
+  body.style.color='#edf4f8';
+  const best=candidates.sort((a,b)=>a[1]-b[1] || a[0]-b[0])[0];
+  if (!best) body.textContent=tr('Outdoor timing forecast unavailable.','बाहर जाने के समय का पूर्वानुमान उपलब्ध नहीं है।');
+  else {
+    const [time,value]=best;
+    const end=new Intl.DateTimeFormat('en-GB',{timeZone:zone,hour:'2-digit',minute:'2-digit'}).format((time+3600)*1000);
+    body.textContent=clock(time)+' – '+end+' · '+tr('Forecast US AQI ','अनुमानित अमेरिकी AQI ')+Math.round(value)+'. '+
+      (value<=50?tr('Good air quality is forecast for this hour.','इस घंटे वायु गुणवत्ता अच्छी रहने का अनुमान है।'):value<=100?tr('The lowest available daytime estimate is Moderate.','दिन का सबसे कम उपलब्ध अनुमान मध्यम है।'):tr('Even the lowest available daytime estimate is elevated. Consider postponing strenuous outdoor activity.','दिन का सबसे कम उपलब्ध अनुमान भी ऊँचा है। कठिन बाहरी गतिविधि टालने पर विचार करें।'))+
+      tr(' Compared available hours from 06:00 to 21:00 local time in the next 24 hours.',' अगले 24 घंटों में स्थानीय समय 06:00 से 21:00 के उपलब्ध घंटों की तुलना की गई।');
+  }
+  panel.append(title,body);
+  $('tips').after(panel);
 }
 const band=v=>[50,100,150,200,300,Infinity].findIndex(n=>v<=n);
 const cities=[['Jaipur','India',26.9124,75.7873],['Delhi','India',28.61,77.21],['Mumbai','India',19.076,72.878],['Bengaluru','India',12.97,77.59],['London','United Kingdom',51.507,-.128]];
@@ -120,7 +147,7 @@ function map(){
 function fallbackMap(){const el=$('map'),w=el.clientWidth,h=el.clientHeight,[cx,cy]=world(city[2],city[3]),left=cx-w/2,top=cy-h/2,tiles=$('tiles');tiles.replaceChildren();el.querySelector('.credit').textContent='Esri and contributors · © OpenStreetMap';$('mapnote').textContent='';for(let x=Math.floor(left/256);x<=Math.floor((left+w)/256);x++)for(let y=Math.floor(top/256);y<=Math.floor((top+h)/256);y++){if(y<0||y>=2**zoom)continue;const img=document.createElement('img');img.alt='';img.style.left=(x*256-left)+'px';img.style.top=(y*256-top)+'px';img.onerror=()=>{if(!img.isConnected)return;if(!img.dataset.retried){img.dataset.retried='yes';img.src='https://tile.openstreetmap.org/'+zoom+'/'+((x+2**zoom)%2**zoom)+'/'+y+'.png';return}img.hidden=true;const note=$('mapnote');if(note)note.textContent='Base map offline · coordinate grid'};img.style.filter='invert(.92) grayscale(.9)';img.src='https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/'+zoom+'/'+y+'/'+((x+2**zoom)%2**zoom);tiles.append(img)}
 $('markers').replaceChildren();for(const [lat,lon,val] of points){const [x,y]=world(lat,lon),b=document.createElement('button');b.className='pin';b.style.cssText='left:'+(x-left)+'px;top:'+(y-top)+'px;background:'+colors[band(val)];b.textContent=val;b.title=(sample?'Sample':'Estimated')+' US AQI at '+lat.toFixed(2)+', '+lon.toFixed(2);b.onclick=()=>{$('mapnote').textContent=b.title+' · '+cats[band(val)]};$('markers').append(b)}}
 function plot(){const data=history.slice(-hours),svg=$('plot');if(!data.length){svg.textContent='Hourly data unavailable.';$('summary').textContent='';return}const vals=data.map(p=>p[1]).filter(Number.isFinite);if(!vals.length){svg.textContent='Hourly data unavailable.';$('summary').textContent='';return}const max=Math.max(50,Math.ceil(Math.max(...vals)/50)*50),x=i=>38+360*i/Math.max(1,data.length-1),y=v=>128-104*v/max;let path='',pen=false;data.forEach((p,i)=>{if(!Number.isFinite(p[1])){pen=false;return}path+=(pen?'L':'M')+x(i)+' '+y(p[1]);pen=true});const ticks=[0,max/2,max].map(v=>'<path stroke="#dce6dc" d="M38 '+y(v)+'h360"/><text x="2" y="'+(y(v)+4)+'">'+v+'</text>').join('');const date=t=>new Date(t*1000).toLocaleString('en-GB',hours===24?{hour:'2-digit',minute:'2-digit',timeZone:'UTC'}:{month:'short',day:'numeric',timeZone:'UTC'});svg.innerHTML='<svg viewBox="0 0 410 160" role="img" aria-label="Hourly US AQI trend" fill="#546d60" font-size="12">'+ticks+'<path d="'+path+'" stroke="#28754e" stroke-width="3" fill="none"/><text x="38" y="151">'+date(data[0][0])+'</text><text text-anchor="end" x="398" y="151">'+date(data.at(-1)[0])+' UTC</text></svg>';$('summary').textContent=(sample?'Sample range':'AQI range')+' · '+Math.min(...vals)+'–'+Math.max(...vals)+' over '+(hours===24?'24 hours':'7 days')}
-function display(v,time){const i=band(v);$('aqi').textContent=v;$('category').textContent=i===2?'Unhealthy for sensitive groups':cats[i];$('category').style.background=colors[i];$('stamp').textContent=sample?'Sample data · live feed unavailable':(Math.abs(Date.now()/1000-time)>10800?'Delayed model estimate':'Current model estimate')+' · '+new Date(time*1000).toLocaleString();showPrecautions(v,time);explain(v,time);plot();map()}
+function display(v,time){const i=band(v);$('aqi').textContent=v;$('category').textContent=i===2?'Unhealthy for sensitive groups':cats[i];$('category').style.background=colors[i];$('stamp').textContent=sample?'Sample data · live feed unavailable':(Math.abs(Date.now()/1000-time)>10800?'Delayed model estimate':'Current model estimate')+' · '+new Date(time*1000).toLocaleString();showPrecautions(v,time);if(!$('tips').hidden)outdoorWindow();explain(v,time);plot();map()}
 async function load(c){const id=++version;city=c;resetTools();resetInsights();updateVisibility(c,id);points=[];history=[];sample=false;zoom=9;$('place').textContent=c.slice(0,2).filter(Boolean).join(', ');$('aqi').textContent='—';$('category').textContent='Loading';$('category').style.background='#eee';$('stamp').textContent='Retrieving current estimate…';safetyStatus('Checking pollution levels…','Waiting for a current estimate for '+$('place').textContent+'.');plot();map();
 const offsets=[[0,0],[-.12,-.16],[.12,-.16],[.12,.16],[-.12,.16],[0,-.16],[0,.16],[-.12,0],[.12,0]],coords=offsets.map(([a,b])=>[Math.max(-89,Math.min(89,c[2]+a)),((c[3]+b+540)%360)-180]);
 try{const d=await json(api(c[2],c[3],'&hourly=us_aqi,'+pollutants.map(p=>'us_aqi_'+p[0]).join(',')+'&past_days=31&forecast_days=4&timezone=auto'));if(id!==version)return;if(!Number.isFinite(d.current?.us_aqi))throw Error();const t=d.current.time,v=Math.round(d.current.us_aqi);history=(d.hourly?.time||[]).map((s,i)=>[s,d.hourly.us_aqi[i]]).filter(p=>p[0]<=t);prepareTools(d);showInsights(d);points=[[c[2],c[3],v]];display(v,t);try{const near=coords.slice(1),rows=await json(api(near.map(p=>p[0].toFixed(4)),near.map(p=>p[1].toFixed(4)),''));if(id!==version)return;rows.forEach((r,i)=>{if(Number.isFinite(r.current?.us_aqi))points.push([...near[i],Math.round(r.current.us_aqi)])});map()}catch{}}
