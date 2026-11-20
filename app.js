@@ -50,7 +50,7 @@ function map(){
     element.replaceChildren();
     element.parentElement.querySelector('p').textContent='Tap a reading to explore air quality around the selected location.';
     element.style.height='clamp(440px,62vh,670px)';
-    streetMap=L.map(element,{scrollWheelZoom:false,zoomControl:false}).setView([city[2],city[3]],10);
+    streetMap=L.map(element,{scrollWheelZoom:true,zoomControl:false}).setView([city[2],city[3]],10);
     const streets=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,className:'esri-streets',attribution:'Tiles © <a href="https://www.arcgis.com/home/item.html?id=3b93337983e9434f8db950e38a8629af">Esri and contributors</a> · © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(streetMap);
     streets.getContainer().style.filter='invert(.92) grayscale(.9)';
     L.control.zoom({position:'topright'}).addTo(streetMap);
