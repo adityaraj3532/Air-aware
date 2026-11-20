@@ -88,3 +88,21 @@ h1 {letter-spacing:-.052em;font-weight:750}
 #map .leaflet-bar button[aria-pressed=true]{background:#71425a}
 #map .map-reading{background:#191d23f5;color:#fff;border:1px solid #ffffff25;border-radius:15px;padding:14px 17px;margin:0 0 23px 10px;box-shadow:0 8px 22px #0006;min-width:min(235px,75vw)}
 .map-reading strong,.map-reading span{display:block}.map-reading strong{font-size:16px}.map-reading span{color:#bbc8d1;font-size:12px;margin:3px 0 5px}.map-reading b{font-size:30px;line-height:1.15;color:var(--aq-color);vertical-align:middle}.map-reading em{margin-left:12px;background:var(--aq-color);color:#171820;padding:3px 8px;border-radius:6px;font:700 12px/1.5 Inter,sans-serif}
+
+/* Keep open search results above the location action and dashboard navigation. */
+.heading:has(#results:not(:empty)) {
+  position: relative;
+  z-index: 1001;
+  overflow: visible;
+}
+.location-tools:has(#results:not(:empty)),
+#search:has(#results:not(:empty)) {
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+}
+#results:not(:empty) {
+  max-height: min(44vh, 20rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
