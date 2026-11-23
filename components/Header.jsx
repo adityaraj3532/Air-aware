@@ -78,7 +78,7 @@ export default function Header({
         </button>
         <div className="brand">
           <div className="brand-mark">≋</div>
-          <div>Air<span>Aware</span></div>
+          <div>Breath<span>Air</span></div>
         </div>
       </div>
 

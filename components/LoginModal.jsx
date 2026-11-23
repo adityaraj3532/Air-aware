@@ -19,7 +19,7 @@ export default function LoginModal({ onLogin }) {
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <div className="auth-brand"><div className="brand-mark">≋</div><div>Air<span style={{ color: '#167d70' }}>Aware</span></div></div>
+        <div className="auth-brand"><div className="brand-mark">≋</div><div>Breath<span style={{ color: '#167d70' }}>Air</span></div></div>
         <p className="eyebrow">Your local air companion</p>
         <h1 id="loginTitle">Welcome back.</h1>
         <p className="auth-copy">Sign in to explore your dashboard, view your profile, and check sample air-quality information for searched locations.</p>
@@ -37,7 +37,7 @@ export default function LoginModal({ onLogin }) {
         </div>
 
         {error && <div className="auth-error show" role="alert">{error}</div>}
-        <button className="primary auth-submit" type="submit">Sign in to AirAware →</button>
+        <button className="primary auth-submit" type="submit">Sign in to BreathAir →</button>
         <p className="auth-note">Prototype sign-in only: this does not create a real account or securely authenticate users. Passwords are not saved. A production login needs a secure backend.</p>
       </form>
     </div>
