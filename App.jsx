@@ -65,9 +65,7 @@ export default function App() {
       const live = await fetchLiveAirQuality(query);
       setActiveData(live);
       setActiveLocation(live.location);
-      if (cityData[live.location]) {
-        setSelectedCity(live.location);
-      }
+      setSelectedCity(live.location);
       setLocationFeedback({
         message: `● Live air quality data updated for ${live.fullLocation}`,
         error: false,
@@ -108,14 +106,38 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  function useMyLocation() {
+    if (!navigator.geolocation) {
+      setLocationFeedback({ message: 'Location is not supported by this browser.', error: true });
+      return;
+    }
+    setLocationFeedback({ message: 'Finding your location…', error: false });
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${coords.latitude}&longitude=${coords.longitude}&localityLanguage=en`);
+          const place = await res.json();
+          const name = place.city || place.locality || place.principalSubdivision;
+          if (!name) throw new Error('no place');
+          setSearchValue('');
+          loadCityAirQuality(name);
+        } catch {
+          setLocationFeedback({ message: 'Could not identify your city. Please search manually.', error: true });
+        }
+      },
+      () => setLocationFeedback({ message: 'Location permission denied. Search for your city instead.', error: true }),
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+    );
+  }
+
   function selectCity(city) {
     setSelectedCity(city);
     setSearchValue('');
     loadCityAirQuality(city);
   }
 
-  function searchLocation() {
-    const raw = searchValue.trim();
+  function searchLocation(query) {
+    const raw = (typeof query === 'string' ? query : searchValue).trim();
     if (!raw) {
       setLocationFeedback({ message: 'Enter a city or area name to search.', error: true });
       return;
@@ -151,7 +173,7 @@ export default function App() {
       currentPage = <Compare activeCity={selectedCity} activeLocation={activeLocation} activeData={activeData} />;
       break;
     case 'campus':
-      currentPage = <CampusBoard />;
+      currentPage = <CampusBoard data={activeData} location={activeLocation} />;
       break;
     case 'insights':
       currentPage = <Insights data={activeData} location={activeLocation} />;
@@ -180,6 +202,7 @@ export default function App() {
         searchValue={searchValue}
         onSearchValueChange={setSearchValue}
         onSearch={searchLocation}
+        onUseLocation={useMyLocation}
         locationFeedback={locationFeedback}
         onOpenProfile={() => setShowProfile(true)}
         isSidebarOpen={isSidebarOpen}
