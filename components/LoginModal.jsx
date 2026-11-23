@@ -1,6 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-export default function LoginModal({ onLogin }) {
+export default function LoginModal({ onLogin, onClose }) {
+  // Close on Escape
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose?.();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,12 +24,13 @@ export default function LoginModal({ onLogin }) {
   }
 
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+    <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="loginTitle" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
       <form className="auth-card" onSubmit={handleSubmit}>
+        <button type="button" className="auth-close" onClick={onClose} aria-label="Close login">✕</button>
         <div className="auth-brand"><div className="brand-mark">≋</div><div>Breath<span style={{ color: '#167d70' }}>Air</span></div></div>
         <p className="eyebrow">Your local air companion</p>
         <h1 id="loginTitle">Welcome back.</h1>
-        <p className="auth-copy">Sign in to explore your dashboard, view your profile, and check sample air-quality information for searched locations.</p>
+        <p className="auth-copy">Sign in to save your profile. It's optional: every feature works without an account.</p>
 
         <div className="auth-fields">
           <label>Your name
@@ -38,6 +46,7 @@ export default function LoginModal({ onLogin }) {
 
         {error && <div className="auth-error show" role="alert">{error}</div>}
         <button className="primary auth-submit" type="submit">Sign in to BreathAir →</button>
+        <button type="button" className="auth-skip" onClick={onClose}>Continue as guest</button>
         <p className="auth-note">Prototype sign-in only: this does not create a real account or securely authenticate users. Passwords are not saved. A production login needs a secure backend.</p>
       </form>
     </div>

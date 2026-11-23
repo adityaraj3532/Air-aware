@@ -25,6 +25,7 @@ function getSavedUser() {
 export default function App() {
   const [user, setUser] = useState(getSavedUser);
   const [showProfile, setShowProfile] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const [activePage, setActivePage] = useState('overview');
   const [selectedCity, setSelectedCity] = useState('Jaipur');
   const [activeLocation, setActiveLocation] = useState('Jaipur');
@@ -147,6 +148,7 @@ export default function App() {
 
   function handleLogin(nextUser) {
     setUser(nextUser);
+    setShowLogin(false);
     try {
       window.localStorage.setItem('airawareDemoUser', JSON.stringify(nextUser));
     } catch {
@@ -205,6 +207,7 @@ export default function App() {
         onUseLocation={useMyLocation}
         locationFeedback={locationFeedback}
         onOpenProfile={() => setShowProfile(true)}
+        onOpenLogin={() => setShowLogin(true)}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={toggleSidebar}
         themeMode={themeMode}
@@ -230,7 +233,7 @@ export default function App() {
         <main className="main">{currentPage}</main>
       </div>
 
-      {!user && <LoginModal onLogin={handleLogin} />}
+      {showLogin && !user && <LoginModal onLogin={handleLogin} onClose={() => setShowLogin(false)} />}
       {showProfile && user && (
         <ProfileModal
           user={user}

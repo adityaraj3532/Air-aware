@@ -12,6 +12,7 @@ export default function Header({
   onUseLocation,
   locationFeedback,
   onOpenProfile,
+  onOpenLogin,
   isSidebarOpen,
   onToggleSidebar,
   themeMode,
@@ -150,11 +151,20 @@ export default function Header({
           <span className="theme-mode-text">{themeMode === 'dark' ? 'Light' : 'Dark'}</span>
         </button>
 
-        <button className="profile-trigger" type="button" onClick={onOpenProfile} aria-label="Open user profile">
-          <span className="avatar">{getInitials(user?.name)}</span>
-          <span className="profile-trigger-name">{user?.name?.split(' ')[0] || 'Guest'}</span>
-          <span className="chevron">⌄</span>
-        </button>
+        {user ? (
+          <button className="profile-trigger" type="button" onClick={onOpenProfile} aria-label="Open user profile">
+            <span className="avatar">{getInitials(user.name)}</span>
+            <span className="profile-trigger-name">{user.name?.split(' ')[0]}</span>
+            <span className="chevron">⌄</span>
+          </button>
+        ) : (
+          <button className="login-btn" type="button" onClick={onOpenLogin}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
+            </svg>
+            Log in
+          </button>
+        )}
       </div>
     </header>
   );
