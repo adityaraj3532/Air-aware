@@ -2,19 +2,38 @@ import { cityNames } from '../data/airQualityData.js';
 import { getInitials } from '../utils/aqi.js';
 
 export default function Header({
-  user, selectedCity, onCityChange, searchValue, onSearchValueChange,
-  onSearch, locationFeedback, onOpenProfile,
+  user,
+  selectedCity,
+  onCityChange,
+  searchValue,
+  onSearchValueChange,
+  onSearch,
+  locationFeedback,
+  onOpenProfile,
+  isSidebarOpen,
+  onToggleSidebar,
+  themeMode,
+  onToggleThemeMode,
 }) {
   return (
     <header className="topbar">
-      <div className="brand">
-        <div className="brand-mark">≋</div>
-        <div>Air<span>Aware</span></div>
+      <div className="brand-group">
+        <button
+          className="sidebar-toggle-btn"
+          type="button"
+          onClick={onToggleSidebar}
+          aria-label={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+          title={isSidebarOpen ? 'Dissolve / hide sidebar' : 'Show sidebar'}
+        >
+          {isSidebarOpen ? '⇤' : '☰'}
+        </button>
+        <div className="brand">
+          <div className="brand-mark">≋</div>
+          <div>Air<span>Aware</span></div>
+        </div>
       </div>
 
       <div className="top-right">
-        
-
         <div>
           <div className="location-search">
             <input
@@ -27,7 +46,9 @@ export default function Header({
             />
             <button className="primary" type="button" onClick={onSearch}>Search</button>
           </div>
-          <p className={`location-feedback ${locationFeedback.error ? 'error' : ''}`} aria-live="polite">{locationFeedback.message}</p>
+          <p className={`location-feedback ${locationFeedback.error ? 'error' : ''}`} aria-live="polite">
+            {locationFeedback.message}
+          </p>
         </div>
 
         <label className="select-wrap">
@@ -36,6 +57,17 @@ export default function Header({
             {cityNames.map((city) => <option key={city} value={city}>{city}</option>)}
           </select>
         </label>
+
+        <button
+          className="theme-mode-btn"
+          type="button"
+          onClick={onToggleThemeMode}
+          aria-label={`Switch to ${themeMode === 'dark' ? 'light' : 'dark'} mode`}
+          title={`Switch to ${themeMode === 'dark' ? 'light' : 'dark'} mode`}
+        >
+          <span className="theme-mode-icon">{themeMode === 'dark' ? '☀️' : '🌙'}</span>
+          <span className="theme-mode-text">{themeMode === 'dark' ? 'Light' : 'Dark'}</span>
+        </button>
 
         <button className="profile-trigger" type="button" onClick={onOpenProfile} aria-label="Open user profile">
           <span className="avatar">{getInitials(user?.name)}</span>

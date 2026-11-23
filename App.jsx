@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from './components/Header.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import LoginModal from './components/LoginModal.jsx';
@@ -10,6 +10,8 @@ import CampusBoard from './pages/CampusBoard.jsx';
 import Insights from './pages/Insights.jsx';
 import Learn from './pages/Learn.jsx';
 import { cityData, localLocations } from './data/airQualityData.js';
+import { fetchLiveAirQuality, getFallbackData } from './services/airQualityService.js';
+import { getAqiLevel } from './utils/aqi.js';
 
 function getSavedUser() {
   try {
@@ -26,9 +28,80 @@ export default function App() {
   const [activePage, setActivePage] = useState('overview');
   const [selectedCity, setSelectedCity] = useState('Jaipur');
   const [activeLocation, setActiveLocation] = useState('Jaipur');
-  const [activeData, setActiveData] = useState(cityData.Jaipur);
+  const [activeData, setActiveData] = useState(() => getFallbackData('Jaipur'));
   const [searchValue, setSearchValue] = useState('');
-  const [locationFeedback, setLocationFeedback] = useState({ message: '', error: false });
+  const [locationFeedback, setLocationFeedback] = useState({ message: 'Fetching live air data...', error: false });
+  const [loading, setLoading] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [themeMode, setThemeMode] = useState(() => {
+    try {
+      return window.localStorage.getItem('airaware_theme_mode') || 'light';
+    } catch {
+      return 'light';
+    }
+  });
+
+  function toggleSidebar() {
+    setIsSidebarOpen((prev) => !prev);
+  }
+
+  function toggleThemeMode() {
+    setThemeMode((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      try {
+        window.localStorage.setItem('airaware_theme_mode', next);
+      } catch {}
+      return next;
+    });
+  }
+
+  const aqiLevel = getAqiLevel(activeData?.aqi);
+
+  async function loadCityAirQuality(query) {
+    setLoading(true);
+    setLocationFeedback({ message: `Fetching live air data for ${query}...`, error: false });
+
+    try {
+      const live = await fetchLiveAirQuality(query);
+      setActiveData(live);
+      setActiveLocation(live.location);
+      if (cityData[live.location]) {
+        setSelectedCity(live.location);
+      }
+      setLocationFeedback({
+        message: `● Live air quality data updated for ${live.fullLocation}`,
+        error: false,
+      });
+    } catch {
+      // Check local sample matches
+      const key = query.toLowerCase().trim();
+      const localMatch = localLocations[key];
+      if (localMatch) {
+        setSelectedCity(localMatch.city);
+        setActiveLocation(localMatch.label || query);
+        setActiveData({ ...getFallbackData(localMatch.city), ...localMatch.data });
+        setLocationFeedback({
+          message: `Showing campus sample AQI for ${localMatch.label || query}.`,
+          error: false,
+        });
+      } else {
+        const fallback = getFallbackData(query);
+        setActiveData(fallback);
+        setActiveLocation(fallback.location);
+        setLocationFeedback({
+          message: `Showing sample data for ${query}. Check internet connection for live updates.`,
+          error: false,
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Fetch live air quality on initial load
+  useEffect(() => {
+    loadCityAirQuality('Jaipur');
+  }, []);
 
   function navigate(page) {
     setActivePage(page);
@@ -36,13 +109,9 @@ export default function App() {
   }
 
   function selectCity(city) {
-    const data = cityData[city];
-    if (!data) return;
     setSelectedCity(city);
-    setActiveLocation(city);
-    setActiveData(data);
     setSearchValue('');
-    setLocationFeedback({ message: `Showing illustrative sample AQI for ${city}. This is not live data.`, error: false });
+    loadCityAirQuality(city);
   }
 
   function searchLocation() {
@@ -51,39 +120,7 @@ export default function App() {
       setLocationFeedback({ message: 'Enter a city or area name to search.', error: true });
       return;
     }
-
-    const key = raw.toLowerCase().replace(/\s+/g, ' ');
-    const cityMatch = Object.keys(cityData).find((city) => city.toLowerCase() === key);
-    if (cityMatch) {
-      setSelectedCity(cityMatch);
-      setActiveLocation(cityMatch);
-      setActiveData(cityData[cityMatch]);
-      setLocationFeedback({ message: `Showing illustrative sample AQI for ${cityMatch}. This is not live data.`, error: false });
-      return;
-    }
-
-    const localMatch = localLocations[key];
-    if (localMatch) {
-      setSelectedCity(localMatch.city);
-      setActiveLocation(localMatch.label || raw);
-      setActiveData(localMatch.data);
-      setLocationFeedback({ message: `Showing illustrative sample AQI for ${localMatch.label || raw}, ${localMatch.city}. This is not a live local measurement.`, error: false });
-      return;
-    }
-
-    const partialMatch = Object.keys(cityData).find((city) => city.toLowerCase().includes(key) || key.includes(city.toLowerCase()));
-    if (partialMatch) {
-      setSelectedCity(partialMatch);
-      setActiveLocation(partialMatch);
-      setActiveData(cityData[partialMatch]);
-      setLocationFeedback({ message: `Showing illustrative sample AQI for ${partialMatch}. This is not live data.`, error: false });
-      return;
-    }
-
-    setLocationFeedback({
-      message: `No sample AQI is available for “${raw}”. Try Jaipur, Delhi, Mumbai, Pune, or JECRC University.`,
-      error: true,
-    });
+    loadCityAirQuality(raw);
   }
 
   function handleLogin(nextUser) {
@@ -91,7 +128,7 @@ export default function App() {
     try {
       window.localStorage.setItem('airawareDemoUser', JSON.stringify(nextUser));
     } catch {
-      // The demo still works for this browser session if local storage is blocked.
+      // Works for session if storage is blocked
     }
   }
 
@@ -99,7 +136,7 @@ export default function App() {
     try {
       window.localStorage.removeItem('airawareDemoUser');
     } catch {
-      // Ignore storage errors in this front-end-only demo.
+      // Ignore storage errors
     }
     setUser(null);
     setShowProfile(false);
@@ -108,7 +145,7 @@ export default function App() {
   let currentPage;
   switch (activePage) {
     case 'planner':
-      currentPage = <Planner location={activeLocation} />;
+      currentPage = <Planner location={activeLocation} data={activeData} />;
       break;
     case 'compare':
       currentPage = <Compare activeCity={selectedCity} activeLocation={activeLocation} activeData={activeData} />;
@@ -124,11 +161,18 @@ export default function App() {
       break;
     case 'overview':
     default:
-      currentPage = <Overview data={activeData} location={activeLocation} onNavigate={navigate} />;
+      currentPage = (
+        <Overview
+          data={activeData}
+          location={activeLocation}
+          onNavigate={navigate}
+          onSelectCity={selectCity}
+        />
+      );
   }
 
   return (
-    <>
+    <div className={`app-container mode-${themeMode} theme-${aqiLevel.key}`}>
       <Header
         user={user}
         selectedCity={selectedCity}
@@ -138,10 +182,28 @@ export default function App() {
         onSearch={searchLocation}
         locationFeedback={locationFeedback}
         onOpenProfile={() => setShowProfile(true)}
+        isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={toggleSidebar}
+        themeMode={themeMode}
+        onToggleThemeMode={toggleThemeMode}
       />
 
-      <div className="layout">
-        <Sidebar activePage={activePage} onNavigate={navigate} />
+      <div className={`layout ${isSidebarOpen ? '' : 'sidebar-collapsed'}`}>
+        {!isSidebarOpen && (
+          <button
+            type="button"
+            className="sidebar-floating-toggle"
+            onClick={toggleSidebar}
+            title="Expand sidebar"
+            aria-label="Expand sidebar"
+          >
+            ⇥
+          </button>
+        )}
+        <Sidebar
+          activePage={activePage}
+          onNavigate={navigate}
+        />
         <main className="main">{currentPage}</main>
       </div>
 
@@ -154,6 +216,6 @@ export default function App() {
           onLogout={handleLogout}
         />
       )}
-    </>
+    </div>
   );
 }

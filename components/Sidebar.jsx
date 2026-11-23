@@ -21,9 +21,12 @@ export default function Sidebar({ activePage, onNavigate }) {
           <span className="ico">{item.icon}</span>{item.label}
         </button>
       ))}
+
       <div className="sidebar-note">
         <strong>Small steps matter</strong>
-        <p>Understand your local air, plan thoughtfully, and help your community stay informed.</p>
+        <p>Understand your local air.</p>
+        <p>Plan thoughtfully outdoors.</p>
+        <p>Help your community stay informed.</p>
       </div>
     </aside>
   );

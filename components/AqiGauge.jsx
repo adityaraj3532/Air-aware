@@ -1,4 +1,4 @@
-export default function AqiGauge({ value }) {
+export default function AqiGauge({ value, color }) {
   const circumference = 364.42;
   const clampedValue = Math.max(0, Math.min(500, value));
   const dashOffset = circumference * (1 - clampedValue / 500);
@@ -9,7 +9,12 @@ export default function AqiGauge({ value }) {
         <circle cx="70" cy="70" r="58" className="track" />
         <circle
           cx="70" cy="70" r="58" className="progress"
-          style={{ strokeDasharray: circumference, strokeDashoffset: dashOffset }}
+          style={{
+            strokeDasharray: circumference,
+            strokeDashoffset: dashOffset,
+            stroke: color || undefined,
+            transition: 'stroke 0.4s ease, stroke-dashoffset 0.6s ease',
+          }}
         />
       </svg>
       <div className="gauge-inner">
