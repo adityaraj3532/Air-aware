@@ -1092,4 +1092,3 @@ body,
 .auth-close:hover{color:var(--ink);background:var(--hover-bg,#f4f9f6)}
 .auth-skip{display:block;width:100%;margin-top:10px;border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:700;padding:6px;text-decoration:underline}
 .auth-skip:hover{color:var(--ink)}
-.status-main{margin:8px 0 0;font-size:11px;color:var(--muted)}.status-main b{color:var(--ink)}
