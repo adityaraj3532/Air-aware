@@ -173,7 +173,7 @@ export default function App() {
       currentPage = <Compare activeCity={selectedCity} activeLocation={activeLocation} activeData={activeData} />;
       break;
     case 'campus':
-      currentPage = <CampusBoard />;
+      currentPage = <CampusBoard data={activeData} location={activeLocation} />;
       break;
     case 'insights':
       currentPage = <Insights data={activeData} location={activeLocation} />;
