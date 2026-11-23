@@ -1,172 +1,151 @@
+import { useState } from 'react';
 import { AQI_LEVELS } from '../utils/aqi.js';
 
-const pollutants = [
+const POLLUTANTS = [
   {
-    label: 'Particulate matter',
-    title: 'PM2.5',
-    text: 'Very small airborne particles (≤ 2.5 µm). Because of their microscopic size, they bypass nasal filtration, penetrate deep into the lung alveoli, and enter the bloodstream, triggering widespread vascular inflammation.',
+    icon: '🫁', code: 'PM2.5', name: 'Fine particles', size: '≤ 2.5 µm · ~30× thinner than a hair', color: '#e11d48',
+    text: 'So tiny they slip past your nose, reach deep into the lungs and enter the bloodstream, causing inflammation across the body.',
+    sources: ['Vehicle exhaust', 'Crop burning', 'Industry', 'Wood & coal fires'],
   },
   {
-    label: 'Particulate matter',
-    title: 'PM10',
-    text: 'Inhalable coarse particles (≤ 10 µm) including road dust, construction dust, and pollen. They lodge in the upper respiratory tract and bronchi, triggering persistent coughing, throat burning, and eye irritation.',
+    icon: '🌫️', code: 'PM10', name: 'Coarse particles', size: '≤ 10 µm · dust & pollen', color: '#d97706',
+    text: 'Get trapped in the nose, throat and upper airways, triggering coughing, a burning throat and itchy eyes.',
+    sources: ['Road dust', 'Construction', 'Pollen', 'Mining'],
   },
   {
-    label: 'Combustion Gas',
-    title: 'Nitrogen dioxide (NO₂)',
-    text: 'A harsh toxic gas emitted by vehicles and industrial boilers. High concentrations cause airway inflammation, exacerbate childhood asthma attacks, and heighten vulnerability to serious respiratory infections.',
+    icon: '🚗', code: 'NO₂', name: 'Nitrogen dioxide', size: 'Reddish-brown toxic gas', color: '#7c3aed',
+    text: 'Inflames the airways, worsens asthma in children and makes the lungs more vulnerable to infection.',
+    sources: ['Traffic', 'Power plants', 'Boilers'],
   },
   {
-    label: 'Photochemical Gas',
-    title: 'Ground-level ozone (O₃)',
-    text: 'Formed when urban pollutants react in intense sunlight. A strong oxidizer that damages sensitive lung tissue, causing chest tightness, wheezing, shortness of breath, and reduced overall lung capacity.',
+    icon: '☀️', code: 'O₃', name: 'Ground-level ozone', size: 'Forms in strong sunlight', color: '#0284c7',
+    text: 'A strong oxidiser that irritates lung tissue, causing chest tightness, wheezing and reduced lung capacity, worst on hot afternoons.',
+    sources: ['Sunlight + traffic fumes', 'Solvents'],
   },
   {
-    label: 'Critical Health Hazard',
-    title: 'How High AQI & Harmful Gases Severely Impact Your Health',
-    text: 'When the AQI crosses into Poor, Very Poor, or Severe bands (201–500+), inhaling a mixture of toxic gases (NO₂, SO₂, CO, Ozone) and fine particulates creates immediate and long-term health crises:',
-    isFeatured: true,
-    points: [
-      {
-        bold: 'Respiratory System Damage:',
-        desc: 'Triggers acute airway spasms, severe asthma attacks, chronic bronchitis flare-ups, and permanent loss of pulmonary lung elasticity.',
-      },
-      {
-        bold: 'Cardiovascular & Heart Risks:',
-        desc: 'Microscopic pollutants seep into the bloodstream, increasing arterial inflammation, blood viscosity, and blood pressure, significantly multiplying heart attack and stroke risks.',
-      },
-      {
-        bold: 'Reduced Oxygen Delivery (CO Poisoning):',
-        desc: 'Carbon monoxide (CO) binds to blood hemoglobin 200× faster than oxygen, depriving the brain, heart muscles, and vital tissues of vital oxygen.',
-      },
-      {
-        bold: 'High-Risk Vulnerable Groups:',
-        desc: 'Children (developing lungs), the elderly, pregnant mothers, and outdoor workers suffer the highest risk of irreversible cognitive and respiratory impairment.',
-      },
-    ],
+    icon: '🏭', code: 'SO₂', name: 'Sulphur dioxide', size: 'Sharp-smelling gas', color: '#65a30d',
+    text: 'Irritates the nose and throat, constricts airways within minutes and contributes to acid rain and fine particles.',
+    sources: ['Coal power', 'Refineries', 'Smelters'],
+  },
+  {
+    icon: '🔥', code: 'CO', name: 'Carbon monoxide', size: 'Colourless, odourless', color: '#475569',
+    text: 'Binds to blood haemoglobin about 200× more strongly than oxygen, starving the brain and heart of oxygen.',
+    sources: ['Traffic jams', 'Indoor stoves', 'Generators'],
   },
 ];
 
+const IMPACTS = [
+  { icon: '🫁', title: 'Lungs & breathing', text: 'Airway spasms, asthma attacks, bronchitis flare-ups and long-term loss of lung function.' },
+  { icon: '❤️', title: 'Heart & blood', text: 'Particles in the blood raise inflammation and blood pressure, multiplying heart attack and stroke risk.' },
+  { icon: '🧠', title: 'Brain & oxygen', text: 'CO and fine particles reduce oxygen supply, causing headaches, fatigue and poorer concentration.' },
+  { icon: '👶', title: 'Most at risk', text: 'Children, the elderly, pregnant women and outdoor workers face the highest long-term harm.' },
+];
+
+const LEVEL_INFO = {
+  good: { health: 'Minimal impact. Air is clean.', action: 'Enjoy outdoor activities freely.' },
+  satisfactory: { health: 'Minor breathing discomfort for very sensitive people.', action: 'Normal activities are fine.' },
+  moderate: { health: 'Discomfort for people with asthma, lung or heart disease, children and the elderly.', action: 'Sensitive groups should reduce long outdoor exertion.' },
+  poor: { health: 'Breathing discomfort for most people on prolonged exposure.', action: 'Limit outdoor exercise; wear an N95 outdoors.' },
+  'very-poor': { health: 'Respiratory illness on prolonged exposure.', action: 'Stay indoors where possible; run air purifiers.' },
+  severe: { health: 'Affects healthy people and seriously harms those with existing disease.', action: 'Avoid all outdoor activity; keep windows sealed.' },
+};
+
+const MYTHS = [
+  { myth: 'If I can’t see smog, the air is clean.', fact: 'PM2.5 is invisible. Even clear-looking days can have unhealthy AQI.' },
+  { myth: 'Cloth masks protect me from pollution.', fact: 'Only well-fitted N95/FFP2 masks filter fine particles effectively.' },
+  { myth: 'Indoor air is always safer.', fact: 'Cooking smoke, incense and poor ventilation can make indoor air worse than outside.' },
+];
+
 export default function Learn() {
+  const [selected, setSelected] = useState(AQI_LEVELS[2].key);
+  const sel = AQI_LEVELS.find((l) => l.key === selected);
+
   return (
     <section className="view active">
       <div className="head-row">
         <div>
           <p className="eyebrow">Air quality basics</p>
           <h1>Learn about your air</h1>
-          <p className="sub">Understand common pollutants, toxic gases, and their severe health impacts.</p>
+          <p className="sub">What you are breathing, how it affects your health, and what the AQI numbers mean.</p>
         </div>
-        <div className="updated">Health Guide & Categories</div>
+        <div className="updated">📘 Health guide</div>
       </div>
 
-      <div className="grid learn-grid">
-        {pollutants.map((item) => (
-          <article
-            className="card learn-card"
-            key={item.title}
-            style={
-              item.isFeatured
-                ? {
-                    gridColumn: '1 / -1',
-                    background: 'linear-gradient(135deg, #ffffff 0%, #fff7ed 50%, #fff1f2 100%)',
-                    border: '1.5px solid #fed7aa',
-                    padding: '24px',
-                    boxShadow: '0 12px 30px rgba(234, 88, 12, 0.08)',
-                  }
-                : undefined
-            }
-          >
-            <span
-              className="mini-label"
-              style={
-                item.isFeatured
-                  ? {
-                      color: '#c2410c',
-                      background: '#ffedd5',
-                      padding: '3px 9px',
-                      borderRadius: '6px',
-                      display: 'inline-block',
-                      fontWeight: 800,
-                    }
-                  : undefined
-              }
-            >
-              {item.label}
-            </span>
-            <h3
-              style={
-                item.isFeatured
-                  ? { fontSize: '18px', color: '#7c2d12', margin: '10px 0 8px', fontWeight: 800 }
-                  : undefined
-              }
-            >
-              {item.title}
-            </h3>
-            <p style={{ lineHeight: 1.6 }}>{item.text}</p>
+      {/* AQI scale explorer */}
+      <div className="card lr-scale" style={{ '--sel': sel.gaugeColor }}>
+        <div className="lr-head">
+          <h2>India's AQI scale</h2>
+          <small>Tap a band to learn what it means</small>
+        </div>
+        <div className="lr-bands" role="tablist">
+          {AQI_LEVELS.map((l) => (
+            <button key={l.key} type="button" role="tab" aria-selected={selected === l.key}
+              className={selected === l.key ? 'on' : ''} style={{ '--c': l.gaugeColor }} onClick={() => setSelected(l.key)}>
+              <b>{l.range}</b><span>{l.category}</span>
+            </button>
+          ))}
+        </div>
+        <div className="lr-detail" key={sel.key}>
+          <span className="lr-detail-badge">{sel.range}</span>
+          <div>
+            <h3>{sel.category} <small>· {sel.colorName}</small></h3>
+            <p><b>Health:</b> {LEVEL_INFO[sel.key]?.health}</p>
+            <p><b>What to do:</b> {LEVEL_INFO[sel.key]?.action}</p>
+          </div>
+        </div>
+      </div>
 
-            {item.points && (
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                  gap: '12px',
-                  marginTop: '16px',
-                }}
-              >
-                {item.points.map((pt, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.92)',
-                      padding: '13px 15px',
-                      borderRadius: '12px',
-                      border: '1px solid #fed7aa',
-                      fontSize: '12px',
-                    }}
-                  >
-                    <strong style={{ display: 'block', color: '#9a3412', marginBottom: '5px' }}>
-                      {pt.bold}
-                    </strong>
-                    <span style={{ color: 'var(--muted)', lineHeight: 1.55 }}>
-                      {pt.desc}
-                    </span>
-                  </div>
-                ))}
+      {/* Pollutants */}
+      <div className="section-title"><h2>The six pollutants behind the AQI</h2></div>
+      <div className="lr-pollutants">
+        {POLLUTANTS.map((p) => (
+          <article key={p.code} className="card lr-poll" style={{ '--p': p.color }}>
+            <div className="lr-poll-top">
+              <span className="lr-poll-icon" aria-hidden="true">{p.icon}</span>
+              <div>
+                <b className="lr-code">{p.code}</b>
+                <small>{p.name}</small>
               </div>
-            )}
+            </div>
+            <span className="lr-size">{p.size}</span>
+            <p>{p.text}</p>
+            <div className="lr-sources">
+              {p.sources.map((s) => <span key={s}>{s}</span>)}
+            </div>
           </article>
         ))}
       </div>
 
-      <div className="card panel" style={{ marginTop: 22 }}>
-        <h2>India's National AQI Categories & Color Guide</h2>
-        <p>The dashboard background dynamically transitions between these six category colors based on your local air quality.</p>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>AQI range</th>
-              <th>Category</th>
-              <th>Colour guide</th>
-            </tr>
-          </thead>
-          <tbody>
-            {AQI_LEVELS.map((level) => (
-              <tr key={level.range}>
-                <td><b>{level.range}</b></td>
-                <td>{level.category}</td>
-                <td>
-                  <span className={level.chipClass}>
-                    {level.guide}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p className="footer-note">
-          AQI is not the same thing as raw pollutant concentration. The official National AQI represents the highest individual sub-index among measured criteria pollutants.
-        </p>
+      {/* Health impact */}
+      <div className="card lr-hazard">
+        <span className="lr-hazard-tag">⚠ Critical health hazard</span>
+        <h2>How high AQI harms your body</h2>
+        <p className="lr-hazard-sub">When AQI goes above 200 (Poor, Very Poor or Severe), the mix of toxic gases and fine particles causes both immediate and long-term damage.</p>
+        <div className="lr-impacts">
+          {IMPACTS.map((it) => (
+            <div key={it.title} className="lr-impact">
+              <span aria-hidden="true">{it.icon}</span>
+              <b>{it.title}</b>
+              <p>{it.text}</p>
+            </div>
+          ))}
+        </div>
       </div>
+
+      {/* Myths vs facts */}
+      <div className="section-title"><h2>Myth vs fact</h2></div>
+      <div className="lr-myths">
+        {MYTHS.map((m) => (
+          <div key={m.myth} className="card lr-myth">
+            <p className="lr-m"><span>✕ Myth</span>{m.myth}</p>
+            <p className="lr-f"><span>✓ Fact</span>{m.fact}</p>
+          </div>
+        ))}
+      </div>
+
+      <p className="footer-note">
+        India's National AQI is the highest sub-index among the measured pollutants. It is not a raw concentration value.
+      </p>
     </section>
   );
 }
