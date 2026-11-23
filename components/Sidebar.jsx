@@ -10,7 +10,7 @@ const navigation = [
 export default function Sidebar({ activePage, onNavigate }) {
   return (
     <aside className="sidebar">
-      <p className="nav-label">Explore AirAware</p>
+      <p className="nav-label">Explore BreathAir</p>
       {navigation.map((item) => (
         <button
           key={item.id}
