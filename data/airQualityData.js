@@ -1,4 +1,4 @@
-// Fictional sample values used only to demonstrate the AirAware interface.
+// Fictional sample values used only to demonstrate the BreathAir interface.
 // Replace this file's data with an API response when you connect a real AQI source.
 export const cityData = {
   Jaipur: { aqi: 164, status: 'Moderate', pm25: 65, pm10: 110, no2: 28, msg: 'This illustrative reading is in the Moderate band. Check official updates because local conditions can change.' },
