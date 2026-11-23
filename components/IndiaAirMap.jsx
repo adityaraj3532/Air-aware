@@ -294,7 +294,7 @@ export default function IndiaAirMap({ currentCity, onSelectCity, currentAqi }) {
                 position: 'absolute',
                 top: '16px',
                 right: '16px',
-                background: '#ffffff',
+                background: 'var(--card-bg)',
                 border: '1.5px solid var(--line)',
                 padding: '12px 16px',
                 borderRadius: '14px',
@@ -349,7 +349,7 @@ export default function IndiaAirMap({ currentCity, onSelectCity, currentAqi }) {
           </div>
 
           {/* Filter Tabs */}
-          <div style={{ display: 'flex', gap: '6px', background: '#f0f5f2', padding: '4px', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', gap: '6px', background: 'var(--hover-bg)', padding: '4px', borderRadius: '10px' }}>
             <button
               type="button"
               onClick={() => setActiveTab('all')}
@@ -360,8 +360,8 @@ export default function IndiaAirMap({ currentCity, onSelectCity, currentAqi }) {
                 padding: '6px 0',
                 fontSize: '11px',
                 fontWeight: 700,
-                background: activeTab === 'all' ? '#ffffff' : 'transparent',
-                color: activeTab === 'all' ? 'var(--ink)' : 'var(--muted)',
+                background: activeTab === 'all' ? 'var(--card-bg)' : 'transparent',
+                color: activeTab === 'all' ? 'var(--teal)' : 'var(--muted)',
                 boxShadow: activeTab === 'all' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
               }}
             >
@@ -377,7 +377,7 @@ export default function IndiaAirMap({ currentCity, onSelectCity, currentAqi }) {
                 padding: '6px 0',
                 fontSize: '11px',
                 fontWeight: 700,
-                background: activeTab === 'highest' ? '#ffffff' : 'transparent',
+                background: activeTab === 'highest' ? 'var(--card-bg)' : 'transparent',
                 color: activeTab === 'highest' ? '#b91c1c' : 'var(--muted)',
                 boxShadow: activeTab === 'highest' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
               }}
@@ -394,7 +394,7 @@ export default function IndiaAirMap({ currentCity, onSelectCity, currentAqi }) {
                 padding: '6px 0',
                 fontSize: '11px',
                 fontWeight: 700,
-                background: activeTab === 'cleanest' ? '#ffffff' : 'transparent',
+                background: activeTab === 'cleanest' ? 'var(--card-bg)' : 'transparent',
                 color: activeTab === 'cleanest' ? '#15803d' : 'var(--muted)',
                 boxShadow: activeTab === 'cleanest' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
               }}
@@ -417,7 +417,7 @@ export default function IndiaAirMap({ currentCity, onSelectCity, currentAqi }) {
                     justifyContent: 'space-between',
                     padding: '10px 14px',
                     borderRadius: '12px',
-                    background: isSelected ? '#e8f5ef' : '#ffffff',
+                    background: isSelected ? 'color-mix(in srgb, var(--teal) 18%, var(--card-bg))' : 'var(--card-bg)',
                     border: isSelected ? '2px solid #167d70' : '1px solid var(--line)',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
@@ -429,7 +429,7 @@ export default function IndiaAirMap({ currentCity, onSelectCity, currentAqi }) {
                         width: '20px',
                         height: '20px',
                         borderRadius: '6px',
-                        background: '#f1f5f3',
+                        background: 'var(--hover-bg)',
                         display: 'grid',
                         placeItems: 'center',
                         fontSize: '10px',

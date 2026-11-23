@@ -1,9 +1,14 @@
+import { useState } from 'react';
+import WeekTrend from '../components/WeekTrend.jsx';
 import AqiGauge from '../components/AqiGauge.jsx';
+import AirBuddy from '../components/AirBuddy.jsx';
 import IndiaAirMap from '../components/IndiaAirMap.jsx';
+import CityAqiMap from '../components/CityAqiMap.jsx';
 import { getAqiLevel } from '../utils/aqi.js';
 
 export default function Overview({ data, location, onNavigate, onSelectCity }) {
   const aqiLevel = getAqiLevel(data.aqi);
+  const [showWeek, setShowWeek] = useState(true);
 
   // Extract up to 6 sample points from hourly forecast for the visual curve
   const hourlyPoints = data?.hourly?.length >= 6
@@ -67,9 +72,13 @@ export default function Overview({ data, location, onNavigate, onSelectCity }) {
           <div className="aqi-main">
             <AqiGauge value={data.aqi} color={aqiLevel.gaugeColor} />
             <div>
-              <p className="status" style={{ color: aqiLevel.gaugeColor }}>{data.status}</p>
+              <p className="status" style={{ color: aqiLevel.gaugeColor }}>
+                {data.status}
+                <span className="status-city">📍 {data.location || location}</span>
+              </p>
               <p className="status-desc">{data.msg}</p>
             </div>
+            <AirBuddy levelKey={aqiLevel.key} color={aqiLevel.gaugeColor} />
           </div>
           <div className="pollutants">
             <div className="pollutant">
@@ -148,6 +157,8 @@ export default function Overview({ data, location, onNavigate, onSelectCity }) {
         </article>
       </div>
 
+      <CityAqiMap city={data.location || location} />
+
       <IndiaAirMap
         currentCity={data.location || location}
         currentAqi={data.aqi}
@@ -158,48 +169,60 @@ export default function Overview({ data, location, onNavigate, onSelectCity }) {
         <h2>Precautionary guidance & recommendations</h2>
       </div>
 
-      <div className="alert">
-        <div className="alert-icon" style={{ background: aqiLevel.chipClass.includes('dark-green') || aqiLevel.chipClass.includes('dark-red') ? aqiLevel.gaugeColor : undefined, color: aqiLevel.isDark ? '#fff' : undefined }}>!</div>
-        <div>
-          <strong>Health Advisory for {data.status} AQI ({aqiLevel.guide})</strong>
+      <div className="advisory" style={{ '--lvl': aqiLevel.gaugeColor }}>
+        <div className="advisory-pulse"><span>{data.aqi}</span></div>
+        <div className="advisory-body">
+          <span className="advisory-kicker">Health advisory · {data.location || location}</span>
+          <div className="advisory-titlerow">
+            <strong>{data.status} air quality — {aqiLevel.guide}</strong>
+            <button type="button" className={`week-toggle ${showWeek ? 'on' : ''}`} onClick={() => setShowWeek((v) => !v)} aria-expanded={showWeek}>
+              {showWeek ? 'Hide weekly trend' : 'Show weekly trend'} <span aria-hidden="true">{showWeek ? '▴' : '▾'}</span>
+            </button>
+          </div>
           <p>{data.msg}</p>
+          <div className="advisory-scale">
+            {[0, 50, 100, 200, 300, 400].map((min, i) => (
+              <i key={min} className={data.aqi > min && data.aqi <= [50, 100, 200, 300, 400, 9999][i] ? 'on' : ''} />
+            ))}
+            <b style={{ left: `${Math.min(100, (data.aqi / 500) * 100)}%` }} />
+          </div>
         </div>
       </div>
 
-      <div className="grid places-grid" style={{ marginTop: 16 }}>
-        <article className="card place">
-          <div className="place-visual" />
-          <div className="place-name">Outdoor Activities</div>
-          <div className="place-meta">
-            {data.aqi <= 50
-              ? 'Ideal for all outdoor activities, running, and sports.'
-              : data.aqi <= 100
-              ? 'Good conditions for walking and moderate workouts.'
-              : data.aqi <= 200
-              ? 'Sensitive groups should reduce heavy outdoor workouts.'
-              : 'Avoid heavy cardio outdoors. Prefer indoor workouts.'}
-          </div>
-        </article>
-        <article className="card place">
-          <div className="place-visual" />
-          <div className="place-name">Indoor Ventilation</div>
-          <div className="place-meta">
-            {data.aqi <= 100
-              ? 'Safe to open windows for fresh natural cross-ventilation.'
-              : 'Keep windows closed during peak traffic hours; run air purifiers.'}
-          </div>
-        </article>
-        <article className="card place">
-          <div className="place-visual" />
-          <div className="place-name">Mask Protection</div>
-          <div className="place-meta">
-            {data.aqi <= 100
-              ? 'Masks not generally required for healthy individuals.'
-              : data.aqi <= 200
-              ? 'N95 masks recommended for sensitive groups outdoors.'
-              : 'N95 or particulate masks strongly recommended outdoors.'}
-          </div>
-        </article>
+      {showWeek && (
+        <div className="card week-card" style={{ '--lvl': aqiLevel.gaugeColor }}>
+          <h3>7-day air quality trend · {data.location || location}</h3>
+          <WeekTrend weekly={data.weekly} todayAqi={data.aqi} />
+        </div>
+      )}
+
+      <div className="guide-groups">
+        {GUIDE_GROUPS.map((grp) => {
+          const current = grp.tone === (data.aqi <= 100 ? 'safe' : data.aqi <= 200 ? 'caution' : 'avoid');
+          return (
+            <section key={grp.tone} className={`guide-group tone-${grp.tone} ${current ? 'current' : ''}`}>
+              <header className="guide-group-head">
+                <span className="guide-group-icon" aria-hidden="true">{grp.symbol}</span>
+                <div>
+                  <h3>{grp.label}</h3>
+                  <small>India AQI {grp.range}</small>
+                </div>
+                {current && <span className="guide-now">Now · {data.aqi}</span>}
+              </header>
+              <ul>
+                {getGuidance(grp.sample).map((g) => (
+                  <li key={g.title}>
+                    <span className="guide-icon" aria-hidden="true">{g.icon}</span>
+                    <div>
+                      <div className="guide-row-top"><b>{g.title}</b><span className="guide-badge">{g.badge}</span></div>
+                      <p>{g.text}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
       </div>
 
       <p className="footer-note">
@@ -208,3 +231,31 @@ export default function Overview({ data, location, onNavigate, onSelectCity }) {
     </section>
   );
 }
+
+// Level-aware tips: tone = safe | caution | avoid
+function getGuidance(aqi) {
+  const t = aqi <= 100 ? 'safe' : aqi <= 200 ? 'caution' : 'avoid';
+  const badge = { safe: '✓ Safe', caution: '! Caution', avoid: '✕ Avoid' };
+  const risk = Math.max(6, Math.min(100, Math.round((aqi / 400) * 100)));
+  const pick = (good, mid, bad) => (t === 'safe' ? good : t === 'caution' ? mid : bad);
+  return [
+    { icon: '🏃', title: 'Outdoor Activities', tone: t, badge: badge[t], risk,
+      text: aqi <= 50 ? 'Ideal for running, cycling and outdoor sports.' : pick('Good for walks and moderate workouts.', 'Sensitive groups should cut back heavy outdoor workouts.', 'Skip outdoor cardio and move your workout indoors.') },
+    { icon: '🪟', title: 'Indoor Ventilation', tone: t, badge: pick('Open windows', 'Limit airing', 'Keep closed'), risk,
+      text: pick('Open windows for fresh cross-ventilation.', 'Air out rooms early morning; close them during peak traffic.', 'Keep windows shut and seal gaps around doors.') },
+    { icon: '😷', title: 'Mask Protection', tone: t, badge: pick('Optional', 'Recommended', 'Essential'), risk,
+      text: pick('Masks are not needed for healthy individuals.', 'N95 masks advised for sensitive groups outdoors.', 'Wear a well-fitted N95 whenever you step out.') },
+    { icon: '🌀', title: 'Air Purifier', tone: t, badge: pick('Not needed', 'Low mode', 'Run on high'), risk,
+      text: pick('Natural airflow is enough today.', 'Run a HEPA purifier in bedrooms at night.', 'Keep HEPA purifiers on high in occupied rooms.') },
+    { icon: '👶', title: 'Kids & Elderly', tone: t, badge: badge[t], risk,
+      text: pick('Outdoor play is fine, enjoy the fresh air.', 'Shorten outdoor play; watch for coughing or wheezing.', 'Keep children and elderly indoors as much as possible.') },
+    { icon: '💧', title: 'Stay Hydrated', tone: t, badge: pick('Normal', 'Drink more', 'Drink more'), risk,
+      text: pick('Regular water intake is enough.', 'Extra water helps soothe throat irritation.', 'Hydrate often and rinse your eyes if they sting.') },
+  ];
+}
+
+const GUIDE_GROUPS = [
+  { tone: 'safe', label: 'Safe', symbol: '✓', range: '0–100', sample: 80 },
+  { tone: 'caution', label: 'Caution', symbol: '!', range: '101–200', sample: 150 },
+  { tone: 'avoid', label: 'Avoid', symbol: '✕', range: '201+', sample: 250 },
+];
