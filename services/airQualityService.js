@@ -1,48 +1,10 @@
 // Service to fetch real-time air quality and forecast data from Open-Meteo
 import { cityData } from '../data/airQualityData.js';
+import { indiaAqi, indiaAqiAt, currentIndex } from '../utils/indiaAqi.js';
 
-const PM25_BREAKPOINTS = [
-  [0, 30, 0, 50],
-  [31, 60, 51, 100],
-  [61, 90, 101, 200],
-  [91, 120, 201, 300],
-  [121, 250, 301, 400],
-  [251, 500, 401, 500],
-];
-
-const PM10_BREAKPOINTS = [
-  [0, 50, 0, 50],
-  [51, 100, 51, 100],
-  [101, 250, 101, 200],
-  [251, 350, 201, 300],
-  [351, 430, 301, 400],
-  [431, 600, 401, 500],
-];
-
-const NO2_BREAKPOINTS = [
-  [0, 40, 0, 50],
-  [41, 80, 51, 100],
-  [81, 180, 101, 200],
-  [181, 280, 201, 300],
-  [281, 400, 301, 400],
-  [401, 600, 401, 500],
-];
-
-function calcSubIndex(val, breakpoints) {
-  if (val == null || isNaN(val) || val <= 0) return 0;
-  for (const [cLow, cHigh, iLow, iHigh] of breakpoints) {
-    if (val >= cLow && val <= cHigh) {
-      return ((iHigh - iLow) / (cHigh - cLow)) * (val - cLow) + iLow;
-    }
-  }
-  return 500;
-}
-
-export function calculateIndiaAQI(pm25, pm10, no2) {
-  const iPm25 = calcSubIndex(pm25, PM25_BREAKPOINTS);
-  const iPm10 = calcSubIndex(pm10, PM10_BREAKPOINTS);
-  const iNo2 = calcSubIndex(no2, NO2_BREAKPOINTS);
-  return Math.round(Math.max(iPm25, iPm10, iNo2, 1));
+// Kept for backwards compatibility: India AQI from instantaneous PM2.5 / PM10 / NO2 (+ optional others).
+export function calculateIndiaAQI(pm25, pm10, no2, so2, co, o3) {
+  return indiaAqi({ pm25, pm10, no2, so2, co, o3 }).aqi || 1;
 }
 
 export function getAqiStatus(aqi) {
@@ -87,7 +49,7 @@ export async function fetchLiveAirQuality(query) {
   const { latitude, longitude, name, admin1, country } = place;
   const displayName = [name, admin1, country].filter(Boolean).join(', ');
 
-  const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=pm10,pm2_5,nitrogen_dioxide,ozone,sulphur_dioxide,carbon_monoxide,us_aqi&hourly=pm10,pm2_5,nitrogen_dioxide,us_aqi&timezone=auto&forecast_days=7`;
+  const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=pm10,pm2_5,nitrogen_dioxide,ozone,sulphur_dioxide,carbon_monoxide,us_aqi&hourly=pm10,pm2_5,nitrogen_dioxide,sulphur_dioxide,carbon_monoxide,ozone&timezone=auto&past_days=1&forecast_days=7`;
   const aqRes = await fetch(aqUrl);
   if (!aqRes.ok) throw new Error('Air quality service unavailable');
   const aqData = await aqRes.json();
@@ -100,62 +62,46 @@ export async function fetchLiveAirQuality(query) {
   const so2 = Math.round((current.sulphur_dioxide || 0) * 10) / 10;
   const co = Math.round((current.carbon_monoxide || 0) * 10) / 10;
 
-  let calculatedAqi = calculateIndiaAQI(pm25, pm10, no2);
-  if (!calculatedAqi || calculatedAqi < 1) {
-    calculatedAqi = current.us_aqi || 50;
-  }
+  // Official CPCB method: 24h averages (PM, NO2, SO2) and 8h averages (CO, O3) ending at the current hour
+  const hourly = aqData.hourly || {};
+  const hourlyTimes = hourly.time || [];
+  const nowIdx = currentIndex(hourlyTimes, current.time || '');
+  const aqiSeries = hourlyTimes.map((_, i) => indiaAqiAt(hourly, i));
+  const nowCalc = aqiSeries[nowIdx] || indiaAqi({ pm25, pm10, no2, so2, co, o3 });
+  let calculatedAqi = nowCalc.aqi;
+  if (!calculatedAqi) calculatedAqi = indiaAqi({ pm25, pm10, no2, so2, co, o3 }).aqi || current.us_aqi || 50;
+  const dominantPollutant = nowCalc.dominant;
 
   const { category } = getAqiStatus(calculatedAqi);
   const msg = getPrecautionaryGuidance(calculatedAqi);
 
-  // Parse next 24 hours of hourly data
-  const hourlyTimes = aqData.hourly?.time || [];
-  const hourlyPm25 = aqData.hourly?.pm2_5 || [];
-  const hourlyPm10 = aqData.hourly?.pm10 || [];
-  const hourlyNo2 = aqData.hourly?.nitrogen_dioxide || [];
-
-  const currentTimeIso = current.time;
-  let currentIndex = hourlyTimes.findIndex((t) => t >= currentTimeIso);
-  if (currentIndex === -1) currentIndex = 0;
-
+  // Next 24 hours (each hour uses the trailing averaging window)
   const next24 = [];
-  const limit = Math.min(currentIndex + 24, hourlyTimes.length);
-  for (let i = currentIndex; i < limit; i++) {
+  const limit = Math.min(nowIdx + 24, hourlyTimes.length);
+  for (let i = nowIdx; i < limit; i++) {
     const rawTime = hourlyTimes[i];
-    const dateObj = new Date(rawTime);
-    const hour = dateObj.getHours();
-    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour = new Date(rawTime).getHours();
     const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-    const timeLabel = i === currentIndex ? 'Now' : `${displayHour} ${ampm}`;
-
-    const hPm25 = hourlyPm25[i] || pm25;
-    const hPm10 = hourlyPm10[i] || pm10;
-    const hNo2 = hourlyNo2[i] || no2;
-    const hAqi = calculateIndiaAQI(hPm25, hPm10, hNo2);
-
     next24.push({
-      time: timeLabel,
+      time: i === nowIdx ? 'Now' : `${displayHour} ${hour >= 12 ? 'PM' : 'AM'}`,
       fullTime: rawTime,
-      aqi: hAqi,
-      pm25: hPm25,
+      aqi: aqiSeries[i]?.aqi || calculatedAqi,
+      pm25: hourly.pm2_5?.[i] ?? pm25,
     });
   }
 
-  // Parse 7-day daily forecast trend
+  // 7-day trend: daily mean of the hourly India AQI, from today onwards
+  const today = (current.time || hourlyTimes[nowIdx] || '').slice(0, 10);
   const dailyMap = {};
-  for (let i = 0; i < hourlyTimes.length; i++) {
-    const dateKey = hourlyTimes[i].slice(0, 10);
-    if (!dailyMap[dateKey]) dailyMap[dateKey] = [];
-    const hAqi = calculateIndiaAQI(hourlyPm25[i], hourlyPm10[i], hourlyNo2[i]);
-    dailyMap[dateKey].push(hAqi);
-  }
-
+  hourlyTimes.forEach((t, i) => {
+    const key = t.slice(0, 10);
+    if (key < today || !aqiSeries[i]?.aqi) return;
+    (dailyMap[key] ||= []).push(aqiSeries[i].aqi);
+  });
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const weekTrend = Object.keys(dailyMap).slice(0, 7).map((dateKey) => {
     const values = dailyMap[dateKey];
-    const avgAqi = Math.round(values.reduce((sum, v) => sum + v, 0) / values.length);
-    const dayName = daysOfWeek[new Date(dateKey).getDay()];
-    return { day: dayName, aqi: avgAqi, date: dateKey };
+    return { day: daysOfWeek[new Date(dateKey).getDay()], aqi: Math.round(values.reduce((a, v) => a + v, 0) / values.length), date: dateKey };
   });
 
   // Calculate best outdoor window in the next 12 hours
@@ -169,6 +115,7 @@ export async function fetchLiveAirQuality(query) {
 
   return {
     aqi: calculatedAqi,
+    dominantPollutant,
     status: category,
     pm25,
     pm10,

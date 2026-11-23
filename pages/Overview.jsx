@@ -77,6 +77,7 @@ export default function Overview({ data, location, onNavigate, onSelectCity }) {
                 <span className="status-city">📍 {data.location || location}</span>
               </p>
               <p className="status-desc">{data.msg}</p>
+              {data.dominantPollutant && <p className="status-main">Main pollutant: <b>{data.dominantPollutant}</b> · CPCB 24h/8h averages</p>}
             </div>
             <AirBuddy levelKey={aqiLevel.key} color={aqiLevel.gaugeColor} />
           </div>

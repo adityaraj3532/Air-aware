@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getAqiLevel } from '../utils/aqi.js';
-import { calculateIndiaAQI } from '../services/airQualityService.js';
+import { indiaAqiAt, currentIndex } from '../utils/indiaAqi.js';
 
 // Grid of sample points around the city centre (5 x 5, ~13 km each side)
 const STEPS = [-3, -2, -1, 0, 1, 2, 3];
@@ -68,7 +68,7 @@ export default function CityAqiMap({ city }) {
 
         const pts = [];
         for (const a of STEPS) for (const b of STEPS) pts.push([lat + (a + (a || b ? jitter(a, b, 1) : 0)) * SPACING, lon + (b + (a || b ? jitter(a, b, 2) : 0)) * SPACING * 1.15]);
-        const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${pts.map((p) => p[0].toFixed(4)).join(',')}&longitude=${pts.map((p) => p[1].toFixed(4)).join(',')}&current=pm2_5,pm10,nitrogen_dioxide,us_aqi`;
+        const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${pts.map((p) => p[0].toFixed(4)).join(',')}&longitude=${pts.map((p) => p[1].toFixed(4)).join(',')}&current=pm2_5&hourly=pm2_5,pm10,nitrogen_dioxide,sulphur_dioxide,carbon_monoxide,ozone&past_days=1&forecast_days=1&timezone=auto`;
         let rows = await getJson(url);
         if (!Array.isArray(rows)) rows = [rows];
         if (cancelled) return;
@@ -77,9 +77,11 @@ export default function CityAqiMap({ city }) {
         layer.clearLayers();
         const values = [];
         rows.forEach((r, i) => {
-          const c = r.current || {};
-          let aqi = calculateIndiaAQI(c.pm2_5 || 0, c.pm10 || 0, c.nitrogen_dioxide || 0);
-          if (!aqi || aqi < 1) aqi = Math.round(c.us_aqi || 0);
+          // Same CPCB method as the main card: 24h / 8h trailing averages ending now
+          const idx = currentIndex(r.hourly?.time || [], r.current?.time || '');
+          const calc = indiaAqiAt(r.hourly, idx);
+          const aqi = calc.aqi;
+          const c = { pm2_5: calc.conc.pm25 };
           if (!aqi) return;
           values.push(aqi);
           const level = getAqiLevel(aqi);
@@ -91,7 +93,7 @@ export default function CityAqiMap({ city }) {
             iconAnchor: [21, 21],
           });
           L.marker(pts[i], { icon, title: `AQI ${aqi} · ${level.category}`, zIndexOffset: isCentre ? 1000 : 0 })
-            .bindPopup(`<b>AQI ${aqi}</b> · ${level.category}<br><small>${isCentre ? place.name + ' centre' : 'Nearby area'} · PM2.5 ${Math.round(c.pm2_5 || 0)} µg/m³</small>`)
+            .bindPopup(`<b>AQI ${aqi}</b> · ${level.category}<br><small>${isCentre ? place.name + ' centre' : 'Nearby area'} · 24h PM2.5 ${Math.round(c.pm2_5 || 0)} µg/m³ · main: ${calc.dominant}</small>`)
             .addTo(layer);
         });
         if (!values.length) throw new Error('no data');
