@@ -1,16 +1,17 @@
 const navigation = [
-  { id: 'overview', icon: '⌂', label: 'Overview' },
+  { id: 'overview', icon: '⌂', label: 'Live Monitoring' },
   { id: 'planner', icon: '◷', label: 'Outdoor planner' },
   { id: 'compare', icon: '⇄', label: 'Compare places' },
   { id: 'campus', icon: '▦', label: 'Campus board' },
   { id: 'insights', icon: '⌁', label: 'Air insights' },
+  { id: 'aqi-guide', icon: '⇋', label: 'India vs US AQI' },
   { id: 'learn', icon: '✳', label: 'Learn' },
 ];
 
 export default function Sidebar({ activePage, onNavigate }) {
   return (
     <aside className="sidebar">
-      <p className="nav-label">Explore BreathAir</p>
+      <p className="nav-label">Explore AirAware</p>
       {navigation.map((item) => (
         <button
           key={item.id}

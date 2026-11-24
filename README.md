@@ -1,6 +1,6 @@
-# BreathAir
+# AirAware
 
-**BreathAir** is an air-quality dashboard for Indian cities. It shows live AQI, finds the cleanest time to go outside, and explains what the numbers mean for your health.
+**AirAware** is an air-quality dashboard for Indian cities. It shows live AQI, finds the cleanest time to go outside, and explains what the numbers mean for your health.
 
 Search any city to get live India-AQI readings, a neighbourhood pollution map, hourly and weekly forecasts, weather, and practical guidance on what to do.
 
@@ -8,10 +8,10 @@ Search any city to get live India-AQI readings, a neighbourhood pollution map, h
 
 ## Features
 
-### Overview
+### Live Monitoring
 - **Live AQI card:** India National AQI calculated from PM2.5, PM10 and NO₂, along with O₃, SO₂ and CO readings.
 - **AirBuddy:** an animated character that reacts to the air. It smiles when the air is clean and coughs, masks up or gets dizzy as AQI rises.
-- **Neighbourhood AQI map:** a dark street map that zooms to the searched city and shows about 49 live AQI bubbles across a ~20 km area.
+- **Regional AQI map:** a dark street map centred on the searched city. It shows one live AQI bubble per air-quality model cell (about 40 km wide) across a ~130 km area.
 - **National map:** an India state map coloured by AQI, with a ranked list of states and UTs.
 - **Health advisory:** the current level on a colour scale, plus a 7-day trend chart you can show or hide.
 - **Guidance:** tips grouped into **Safe**, **Caution** and **Avoid**, with the group for the current level highlighted.

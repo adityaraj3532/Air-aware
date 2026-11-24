@@ -663,7 +663,7 @@ body,
 .city-map-stats b{color:var(--ink);font-size:15px;margin-left:3px}
 .city-map-wrap{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--line)}
 .city-map{height:520px;width:100%;background:#2b3230}
-.city-map .city-map-tiles{filter:invert(1) grayscale(1) brightness(1.05) contrast(.95)}
+.city-map .city-map-tiles{filter:brightness(.8) contrast(1.1)}
 .city-map .leaflet-control-attribution{background:rgba(14,21,19,.7);color:#8fa39d}.city-map .leaflet-control-attribution a{color:#a9ddc8}
 .city-map .leaflet-bar a{background:#1b2a27;color:#e6f3ee;border-color:#2a3d39;border-radius:50%!important;margin:4px;width:36px;height:36px;line-height:36px}.city-map .leaflet-bar{border:0;box-shadow:none}
 .city-map-overlay{position:absolute;inset:auto 12px 12px auto;z-index:500;background:var(--card-bg,#fff);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;box-shadow:var(--shadow)}
@@ -1092,3 +1092,69 @@ body,
 .auth-close:hover{color:var(--ink);background:var(--hover-bg,#f4f9f6)}
 .auth-skip{display:block;width:100%;margin-top:10px;border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:700;padding:6px;text-decoration:underline}
 .auth-skip:hover{color:var(--ink)}
+
+.aqi-explain { margin: 10px 0 4px; font-size: .85rem; line-height: 1.45; border-radius: 10px; background: rgba(127,127,127,.08); padding: 8px 12px; }
+.aqi-explain summary { cursor: pointer; font-weight: 600; }
+.aqi-explain p, .aqi-explain ul { margin: 8px 0 0; }
+.aqi-explain ul { padding-left: 18px; }
+.aqi-explain li { margin-bottom: 4px; }
+
+.aqi-learn { margin-top: 18px; }
+.aqi-learn-lead { margin: 6px 0 14px; line-height: 1.5; }
+.aqi-compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.aqi-compare > div { border-radius: 12px; padding: 12px 14px; background: rgba(127,127,127,.08); }
+.aqi-compare h3 { margin: 0; font-size: 1rem; }
+.aqi-src { margin: 2px 0 6px; font-size: .78rem; opacity: .7; }
+.aqi-compare ul { margin: 0; padding-left: 18px; font-size: .88rem; line-height: 1.5; }
+.aqi-tip { margin: 12px 0; font-size: .9rem; }
+.aqi-chat { border-top: 1px solid rgba(127,127,127,.2); padding-top: 12px; }
+.aqi-chat h3 { margin: 0 0 8px; font-size: 1rem; }
+.chat-log { max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px; }
+.chat-msg { max-width: 80%; padding: 8px 12px; border-radius: 14px; font-size: .9rem; line-height: 1.45; }
+.chat-msg.bot { align-self: flex-start; background: rgba(127,127,127,.12); border-bottom-left-radius: 4px; }
+.chat-msg.user { align-self: flex-end; background: var(--accent, #1f7a4a); color: #fff; border-bottom-right-radius: 4px; }
+.chat-suggest { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.chat-suggest button { font-size: .8rem; padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(127,127,127,.35); background: transparent; color: inherit; cursor: pointer; }
+.chat-input { display: flex; gap: 8px; }
+.chat-input input { flex: 1; min-width: 0; padding: 9px 12px; border-radius: 10px; border: 1px solid rgba(127,127,127,.35); background: transparent; color: inherit; font: inherit; }
+
+.buddy-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.aqi-switch { display: inline-flex; padding: 3px; border-radius: 999px; background: rgba(127,127,127,.15); }
+.aqi-switch button { border: 0; background: transparent; color: inherit; font: inherit; font-size: .78rem; font-weight: 600; padding: 5px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap; opacity: .7; }
+.aqi-switch button.on { background: #fff; color: #111; opacity: 1; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+
+/* India vs US AQI page — explicit readable colours in both modes */
+.aqi-learn { --al-text: #1f2937; --al-muted: #4b5563; --al-panel: #f3f6f4; --al-border: #d8e0dc; color: var(--al-text); }
+.mode-dark .aqi-learn { --al-text: #f1f5f9; --al-muted: #cbd5e1; --al-panel: rgba(255,255,255,.07); --al-border: rgba(255,255,255,.18); }
+.aqi-learn .card-title, .aqi-learn h3, .aqi-learn p, .aqi-learn li, .aqi-learn b { color: var(--al-text); }
+.aqi-learn .aqi-src { color: var(--al-muted); opacity: 1; }
+.aqi-learn .aqi-compare > div, .aqi-learn .chat-msg.bot { background: var(--al-panel); border: 1px solid var(--al-border); color: var(--al-text); }
+.aqi-learn .chat-suggest button, .aqi-learn .chat-input input { color: var(--al-text); border-color: var(--al-border); }
+.aqi-learn .chat-input input::placeholder { color: var(--al-muted); }
+.aqi-learn .aqi-chat { border-top-color: var(--al-border); }
+.aqi-learn .chat-msg.user { background: #1f7a4a; color: #fff; }
+.chat-msg.typing { opacity: .7; font-style: italic; }
+
+/* ---- Readability fix: inherit the themed text colour everywhere ---- */
+.app-container { color: var(--ink); }
+.mode-dark .card-title, .mode-dark h1, .mode-dark h2, .mode-dark h3, .mode-dark summary,
+.mode-dark .aqi-explain, .mode-dark .aqi-explain p, .mode-dark .aqi-explain li, .mode-dark .aqi-explain b { color: var(--ink); }
+.mode-dark .aqi-explain { background: rgba(255,255,255,.06); }
+.mode-dark .aqi-switch { background: rgba(255,255,255,.12); }
+.mode-dark .aqi-switch button { color: #e6f3ee; opacity: .85; }
+.mode-dark .aqi-switch button.on { background: #fff; color: #111; opacity: 1; }
+/* dark reds / greens that are too dim on dark cards */
+.mode-dark [style*="rgb(185, 28, 28)"], .mode-dark [style*="#b91c1c"] { color: #f87171 !important; }
+.mode-dark .guide-badge { filter: brightness(1.5); }
+.mode-dark .best-time b { color: #6ee7b7; }
+.mode-dark .ins-kpi span, .mode-dark .wt-legend i, .mode-dark .guide-badge { filter: brightness(1.6) saturate(1.1); }
+/* stronger muted text in light mode */
+.app-container.mode-light, .app-container:not(.mode-dark) { --muted: #5a6e69; }
+.app-container:not(.mode-dark) .nav-label, .app-container:not(.mode-dark) .footer-note { color: #6b7d78; }
+.app-container:not(.mode-dark) .nav-btn { color: #4f6660; }
+/* dark mode: brighten teal / dark accent text */
+.mode-dark .on, .mode-dark .board-going, .mode-dark .board-join, .mode-dark .text-link,
+.mode-dark .lr-fact, .mode-dark [class*="fact"] { color: #5eead4 !important; }
+.mode-dark label, .mode-dark .field label, .mode-dark .auth-fields label { color: #b6c9c3; }
+.mode-dark .lr-hazard-tag { color: #fbbf24; }
+.mode-dark .wt-legend i, .mode-dark i[style] { filter: brightness(1.7); }

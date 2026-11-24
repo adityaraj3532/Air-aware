@@ -1,4 +1,4 @@
-export default function AqiGauge({ value, color }) {
+export default function AqiGauge({ value, color, label = 'INDIA AQI' }) {
   const circumference = 364.42;
   const clampedValue = Math.max(0, Math.min(500, value));
   const dashOffset = circumference * (1 - clampedValue / 500);
@@ -19,7 +19,7 @@ export default function AqiGauge({ value, color }) {
       </svg>
       <div className="gauge-inner">
         <span className="gauge-num">{value}</span>
-        <span className="gauge-unit">INDIA AQI</span>
+        <span className="gauge-unit">{label}</span>
       </div>
     </div>
   );

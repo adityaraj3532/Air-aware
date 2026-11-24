@@ -27,7 +27,7 @@ export default function LoginModal({ onLogin, onClose }) {
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="loginTitle" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
       <form className="auth-card" onSubmit={handleSubmit}>
         <button type="button" className="auth-close" onClick={onClose} aria-label="Close login">✕</button>
-        <div className="auth-brand"><div className="brand-mark">≋</div><div>Breath<span style={{ color: '#167d70' }}>Air</span></div></div>
+        <div className="auth-brand"><div className="brand-mark">≋</div><div>Air<span style={{ color: '#167d70' }}>Aware</span></div></div>
         <p className="eyebrow">Your local air companion</p>
         <h1 id="loginTitle">Welcome back.</h1>
         <p className="auth-copy">Sign in to save your profile. It's optional: every feature works without an account.</p>
@@ -45,7 +45,7 @@ export default function LoginModal({ onLogin, onClose }) {
         </div>
 
         {error && <div className="auth-error show" role="alert">{error}</div>}
-        <button className="primary auth-submit" type="submit">Sign in to BreathAir →</button>
+        <button className="primary auth-submit" type="submit">Sign in to AirAware →</button>
         <button type="button" className="auth-skip" onClick={onClose}>Continue as guest</button>
         <p className="auth-note">Prototype sign-in only: this does not create a real account or securely authenticate users. Passwords are not saved. A production login needs a secure backend.</p>
       </form>

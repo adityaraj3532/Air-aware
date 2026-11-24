@@ -33,7 +33,7 @@ export default function Insights({ data, location }) {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `breathair-report-${location.toLowerCase().replace(/\s+/g, '-')}.csv`;
+    anchor.download = `airaware-report-${location.toLowerCase().replace(/\s+/g, '-')}.csv`;
     anchor.click();
     URL.revokeObjectURL(url);
   }

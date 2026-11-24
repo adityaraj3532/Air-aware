@@ -30,9 +30,12 @@ const NO2_BREAKPOINTS = [
 
 function calcSubIndex(val, breakpoints) {
   if (val == null || isNaN(val) || val <= 0) return 0;
+  // Match by upper bound so decimals in the gaps between CPCB ranges (e.g. PM2.5 30.4)
+  // fall into the right band instead of dropping through to 500.
   for (const [cLow, cHigh, iLow, iHigh] of breakpoints) {
-    if (val >= cLow && val <= cHigh) {
-      return ((iHigh - iLow) / (cHigh - cLow)) * (val - cLow) + iLow;
+    if (val <= cHigh) {
+      const c = Math.max(val, cLow);
+      return ((iHigh - iLow) / (cHigh - cLow)) * (c - cLow) + iLow;
     }
   }
   return 500;

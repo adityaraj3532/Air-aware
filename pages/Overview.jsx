@@ -4,11 +4,17 @@ import AqiGauge from '../components/AqiGauge.jsx';
 import AirBuddy from '../components/AirBuddy.jsx';
 import IndiaAirMap from '../components/IndiaAirMap.jsx';
 import CityAqiMap from '../components/CityAqiMap.jsx';
-import { getAqiLevel } from '../utils/aqi.js';
+import { getAqiLevel, calculateUsAqi, getUsAqiLevel } from '../utils/aqi.js';
 
-export default function Overview({ data, location, onNavigate, onSelectCity }) {
+export default function Overview({ data, location, onNavigate, onSelectCity, aqiStandard = 'IN', onToggleAqiStandard }) {
   const aqiLevel = getAqiLevel(data.aqi);
   const [showWeek, setShowWeek] = useState(true);
+  const isUs = aqiStandard === 'US';
+  const usAqi = calculateUsAqi(data.pm25, data.pm10);
+  const usLevel = getUsAqiLevel(usAqi);
+  const shownAqi = isUs ? usAqi : data.aqi;
+  const shownColor = isUs ? usLevel.color : aqiLevel.gaugeColor;
+  const shownStatus = isUs ? usLevel.category : data.status;
 
   // Extract up to 6 sample points from hourly forecast for the visual curve
   const hourlyPoints = data?.hourly?.length >= 6
@@ -70,16 +76,31 @@ export default function Overview({ data, location, onNavigate, onSelectCity }) {
             </span>
           </div>
           <div className="aqi-main">
-            <AqiGauge value={data.aqi} color={aqiLevel.gaugeColor} />
+            <AqiGauge value={shownAqi} color={shownColor} label={isUs ? 'US AQI' : 'INDIA AQI'} />
             <div>
-              <p className="status" style={{ color: aqiLevel.gaugeColor }}>
-                {data.status}
+              <p className="status" style={{ color: shownColor }}>
+                {shownStatus}
                 <span className="status-city">📍 {data.location || location}</span>
               </p>
               <p className="status-desc">{data.msg}</p>
             </div>
-            <AirBuddy levelKey={aqiLevel.key} color={aqiLevel.gaugeColor} />
+            <div className="buddy-wrap">
+              <AirBuddy levelKey={aqiLevel.key} color={aqiLevel.gaugeColor} />
+              <div className="aqi-switch" role="group" aria-label="AQI standard">
+                <button type="button" className={!isUs ? 'on' : ''} onClick={() => isUs && onToggleAqiStandard?.()}>🇮🇳 India AQI</button>
+                <button type="button" className={isUs ? 'on' : ''} onClick={() => !isUs && onToggleAqiStandard?.()}>🇺🇸 US AQI</button>
+              </div>
+            </div>
           </div>
+          <details className="aqi-explain">
+            <summary>ⓘ Showing {isUs ? 'US' : 'India'} AQI ({isUs ? 'US' : 'India'} {isUs ? usAqi : data.aqi} · {isUs ? 'India' : 'US'} {isUs ? data.aqi : usAqi}). Why are they different?</summary>
+            <p><b>Same air, different rulers.</b> Both turn pollution into a 0–500 score, but each country uses its own scale.</p>
+            <ul>
+              <li><b>🇮🇳 India AQI (CPCB):</b> made for Indian conditions. Up to 60 µg/m³ of PM2.5 still counts as “Satisfactory”. Six levels: Good, Satisfactory, Moderate, Poor, Very Poor, Severe.</li>
+              <li><b>🇺🇸 US AQI (EPA):</b> stricter. Just 35 µg/m³ of PM2.5 already reaches “Unhealthy for Sensitive Groups”. Six levels: Good, Moderate, Unhealthy for Sensitive Groups, Unhealthy, Very Unhealthy, Hazardous.</li>
+            </ul>
+            <p>So the <b>US number is usually higher</b> for the same air. Use India AQI to compare with Indian news and government alerts. Use US AQI for a stricter health view or to compare with other countries.</p>
+          </details>
           <div className="pollutants">
             <div className="pollutant">
               <span>PM2.5</span>

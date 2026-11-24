@@ -9,6 +9,7 @@ import Compare from './pages/Compare.jsx';
 import CampusBoard from './pages/CampusBoard.jsx';
 import Insights from './pages/Insights.jsx';
 import Learn from './pages/Learn.jsx';
+import AqiExplainer from './components/AqiExplainer.jsx';
 import { cityData, localLocations } from './data/airQualityData.js';
 import { fetchLiveAirQuality, getFallbackData } from './services/airQualityService.js';
 import { getAqiLevel } from './utils/aqi.js';
@@ -41,6 +42,18 @@ export default function App() {
       return 'light';
     }
   });
+
+  const [aqiStandard, setAqiStandard] = useState(() => {
+    try { return window.localStorage.getItem('airaware_aqi_standard') || 'IN'; } catch { return 'IN'; }
+  });
+
+  function toggleAqiStandard() {
+    setAqiStandard((prev) => {
+      const next = prev === 'US' ? 'IN' : 'US';
+      try { window.localStorage.setItem('airaware_aqi_standard', next); } catch {}
+      return next;
+    });
+  }
 
   function toggleSidebar() {
     setIsSidebarOpen((prev) => !prev);
@@ -180,6 +193,9 @@ export default function App() {
     case 'insights':
       currentPage = <Insights data={activeData} location={activeLocation} />;
       break;
+    case 'aqi-guide':
+      currentPage = <AqiExplainer data={activeData} location={activeLocation} />;
+      break;
     case 'learn':
       currentPage = <Learn />;
       break;
@@ -191,6 +207,8 @@ export default function App() {
           location={activeLocation}
           onNavigate={navigate}
           onSelectCity={selectCity}
+          aqiStandard={aqiStandard}
+          onToggleAqiStandard={toggleAqiStandard}
         />
       );
   }

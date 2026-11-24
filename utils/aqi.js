@@ -112,3 +112,33 @@ export function getInitials(name = 'Guest User') {
 export function getAqiChipClass(aqi) {
   return getAqiLevel(aqi).chipClass;
 }
+
+// ---- US EPA AQI ----
+const US_PM25 = [[0, 9, 0, 50], [9.1, 35.4, 51, 100], [35.5, 55.4, 101, 150], [55.5, 125.4, 151, 200], [125.5, 225.4, 201, 300], [225.5, 325.4, 301, 500]];
+const US_PM10 = [[0, 54, 0, 50], [55, 154, 51, 100], [155, 254, 101, 150], [255, 354, 151, 200], [355, 424, 201, 300], [425, 604, 301, 500]];
+
+function usSub(c, table) {
+  const v = Number(c);
+  if (!Number.isFinite(v) || v < 0) return 0;
+  const row = table.find(([lo, hi]) => v <= hi) || table[table.length - 1];
+  const [lo, hi, iLo, iHi] = row;
+  return Math.round(((iHi - iLo) / (hi - lo)) * (Math.min(v, hi) - lo) + iLo);
+}
+
+export function calculateUsAqi(pm25, pm10) {
+  return Math.max(usSub(pm25, US_PM25), usSub(pm10, US_PM10));
+}
+
+const US_LEVELS = [
+  [50, 'Good', '#00b050'],
+  [100, 'Moderate', '#d4a800'],
+  [150, 'Unhealthy for Sensitive Groups', '#ff7e00'],
+  [200, 'Unhealthy', '#e60000'],
+  [300, 'Very Unhealthy', '#8f3f97'],
+  [Infinity, 'Hazardous', '#7e0023'],
+];
+
+export function getUsAqiLevel(aqi) {
+  const [, category, color] = US_LEVELS.find(([max]) => aqi <= max);
+  return { category, color };
+}

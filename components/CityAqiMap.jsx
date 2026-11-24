@@ -4,9 +4,11 @@ import 'leaflet/dist/leaflet.css';
 import { getAqiLevel } from '../utils/aqi.js';
 import { calculateIndiaAQI } from '../services/airQualityService.js';
 
-// Grid of sample points around the city centre (5 x 5, ~13 km each side)
-const STEPS = [-3, -2, -1, 0, 1, 2, 3];
-const SPACING = 0.03;
+// Sample points around the city. The Open-Meteo (CAMS) air-quality model for India has
+// grid cells roughly 40 km wide, so points closer than that return identical values.
+// We sample points ~6 km apart in a ~25 km area around the city centre.
+const STEPS = [-2, -1, 0, 1, 2];
+const SPACING = 0.055;
 // Deterministic jitter so points look like scattered stations, not a rigid grid
 const jitter = (a, b, k) => (Math.sin(a * 12.9898 + b * 78.233 + k) * 43758.5453 % 1) * 0.45;
 
@@ -27,12 +29,14 @@ export default function CityAqiMap({ city }) {
     const map = L.map(elRef.current, { zoomControl: false, scrollWheelZoom: false, worldCopyJump: true })
       .setView([22.5, 79], 4);
     L.control.zoom({ position: 'topright' }).addTo(map);
-    // OpenStreetMap streets, darkened with a CSS filter so roads stand out (no API key needed)
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
+    // Esri dark gray basemap + labels (no API key; OSM's own tile server throttles apps)
+    const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
+    L.tileLayer(`${esri}World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}`, {
+      maxZoom: 16,
       className: 'city-map-tiles',
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      attribution: 'Tiles © Esri · © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
+    L.tileLayer(`${esri}World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 16 }).addTo(map);
     layerRef.current = L.layerGroup().addTo(map);
     // Page scroll passes over the map; wheel-zoom only after clicking into it (or with Ctrl held)
     map.on('click focus', () => map.scrollWheelZoom.enable());
@@ -64,7 +68,7 @@ export default function CityAqiMap({ city }) {
         if (cancelled) return;
         const map = mapRef.current;
         map.invalidateSize();
-        map.setView([lat, lon], 12, { animate: false });
+        map.setView([lat, lon], 11, { animate: false });
 
         const pts = [];
         for (const a of STEPS) for (const b of STEPS) pts.push([lat + (a + (a || b ? jitter(a, b, 1) : 0)) * SPACING, lon + (b + (a || b ? jitter(a, b, 2) : 0)) * SPACING * 1.15]);
@@ -76,14 +80,21 @@ export default function CityAqiMap({ city }) {
         const layer = layerRef.current;
         layer.clearLayers();
         const values = [];
-        rows.forEach((r, i) => {
+        const seen = new Set();
+        const centreIdx = Math.floor(pts.length / 2);
+        // centre first so the city's own cell is always shown
+        const order = [centreIdx, ...rows.map((_, i) => i).filter((i) => i !== centreIdx)];
+        order.forEach((i) => {
+          const r = rows[i];
           const c = r.current || {};
+          const cellKey = `${c.pm2_5}|${c.pm10}|${c.nitrogen_dioxide}`;
+          seen.add(cellKey);
           let aqi = calculateIndiaAQI(c.pm2_5 || 0, c.pm10 || 0, c.nitrogen_dioxide || 0);
           if (!aqi || aqi < 1) aqi = Math.round(c.us_aqi || 0);
           if (!aqi) return;
           values.push(aqi);
           const level = getAqiLevel(aqi);
-          const isCentre = i === Math.floor(pts.length / 2);
+          const isCentre = i === centreIdx;
           const icon = L.divIcon({
             className: 'city-aqi-pin',
             html: `<span class="${isCentre ? 'centre' : ''}" style="--pin:${level.gaugeColor}">${aqi}</span>`,
@@ -91,7 +102,7 @@ export default function CityAqiMap({ city }) {
             iconAnchor: [21, 21],
           });
           L.marker(pts[i], { icon, title: `AQI ${aqi} · ${level.category}`, zIndexOffset: isCentre ? 1000 : 0 })
-            .bindPopup(`<b>AQI ${aqi}</b> · ${level.category}<br><small>${isCentre ? place.name + ' centre' : 'Nearby area'} · PM2.5 ${Math.round(c.pm2_5 || 0)} µg/m³</small>`)
+            .bindPopup(`<b>AQI ${aqi}</b> · ${level.category}<br><small>${isCentre ? place.name + ' centre' : 'Nearby point'} · PM2.5 ${Math.round(c.pm2_5 || 0)} µg/m³</small>`)
             .addTo(layer);
         });
         if (!values.length) throw new Error('no data');
@@ -118,8 +129,8 @@ export default function CityAqiMap({ city }) {
     <div className="card city-map-card">
       <div className="city-map-head">
         <div>
-          <h2>Neighbourhood AQI Map</h2>
-          <p className="sub">Live readings across a ~20 km area around {state.place || city || 'your city'}. Click the map (or hold Ctrl) to zoom with the scroll wheel.</p>
+          <h2>Regional AQI Map</h2>
+          <p className="sub">Live model readings at points about 6 km apart across a ~25 km area around {state.place || city || 'your city'}. Nearby points can share a value because the air-quality model works on a coarser grid. Click the map (or hold Ctrl) to zoom.</p>
         </div>
         {state.stats && (
           <div className="city-map-stats">
