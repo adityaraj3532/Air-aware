@@ -1,4 +1,4 @@
-// Vite dev-server middleware: POST /api/chat -> Claude, with live weather / air tools.
+// Vite dev-server middleware: POST /api/chat -> Google Gemini (free) or Claude, with live weather / air tools.
 // The API key stays on the server (read from .env), never shipped to the browser.
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -84,26 +84,77 @@ async function chat(history, context) {
   return 'Sorry, that took too many steps. Please try again.';
 }
 
+// ---- Google Gemini (free tier: get a key at https://aistudio.google.com/apikey) ----
+const GEMINI_MODEL = 'gemini-2.5-flash';
+class GeminiError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
+
+async function chatGemini(history, context) {
+  const contents = history
+    .filter((m) => m.text)
+    .map((m) => ({ role: m.from === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
+  while (contents.length && contents[0].role !== 'user') contents.shift();
+  const body = {
+    systemInstruction: { parts: [{ text: `${SYSTEM}
+
+Current app context: ${JSON.stringify(context)}` }] },
+    tools: [{ functionDeclarations: [{
+      name: 'get_weather_and_air',
+      description: TOOLS[0].description,
+      parameters: { type: 'OBJECT', properties: { place: { type: 'STRING', description: 'City or place name, e.g. "Kota" or "Delhi"' } }, required: ['place'] },
+    }] }],
+    contents,
+  };
+  for (let i = 0; i < 4; i++) {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+      body: JSON.stringify(body),
+    });
+    const json = await r.json();
+    if (!r.ok) throw new GeminiError(r.status, json.error?.message || 'Gemini request failed');
+    const parts = json.candidates?.[0]?.content?.parts || [];
+    const calls = parts.filter((p) => p.functionCall);
+    if (!calls.length) {
+      const text = parts.map((p) => p.text || '').join('').trim();
+      return text || "Sorry, I can't help with that one. Try asking something else!";
+    }
+    contents.push({ role: 'model', parts });
+    contents.push({ role: 'user', parts: await Promise.all(calls.map(async ({ functionCall: fc }) => {
+      let response;
+      try { response = await getWeatherAndAir(fc.args?.place || ''); } catch (e) { response = { error: `Lookup failed: ${e.message}` }; }
+      return { functionResponse: { name: fc.name, response } };
+    })) });
+  }
+  return 'Sorry, that took too many steps. Please try again.';
+}
+
+export async function handleChat(req, res) {
+  res.setHeader('Content-Type', 'application/json');
+  if (req.method !== 'POST') { res.statusCode = 405; res.end('{}'); return; }
+  const useGemini = !!process.env.GEMINI_API_KEY;
+  if (!useGemini && !process.env.ANTHROPIC_API_KEY) { res.statusCode = 503; res.end(JSON.stringify({ error: 'no_key' })); return; }
+  try {
+    const { history = [], context = {} } = await readBody(req);
+    const reply = useGemini ? await chatGemini(history.slice(-20), context) : await chat(history.slice(-20), context);
+    res.end(JSON.stringify({ reply }));
+  } catch (e) {
+    if (e instanceof GeminiError && (e.status === 400 || e.status === 401 || e.status === 403)) { console.error('[airbuddy-chat] Gemini:', e.message); res.statusCode = 401; res.end(JSON.stringify({ error: 'bad_key' })); return; }
+    if (e instanceof GeminiError && e.status === 429) { res.statusCode = 429; res.end(JSON.stringify({ error: 'rate_limited' })); return; }
+    if (e instanceof Anthropic.AuthenticationError) { res.statusCode = 401; res.end(JSON.stringify({ error: 'bad_key' })); return; }
+    if (e instanceof Anthropic.RateLimitError) { res.statusCode = 429; res.end(JSON.stringify({ error: 'rate_limited' })); return; }
+    console.error('[airbuddy-chat]', e);
+    res.statusCode = 500;
+    res.end(JSON.stringify({ error: 'server_error' }));
+  }
+}
+
 export default function chatPlugin(env) {
   return {
     name: 'airbuddy-chat',
     configureServer(server) {
       if (env.ANTHROPIC_API_KEY) process.env.ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
-      server.middlewares.use('/api/chat', async (req, res) => {
-        res.setHeader('Content-Type', 'application/json');
-        if (req.method !== 'POST') { res.statusCode = 405; res.end('{}'); return; }
-        if (!process.env.ANTHROPIC_API_KEY) { res.statusCode = 503; res.end(JSON.stringify({ error: 'no_key' })); return; }
-        try {
-          const { history = [], context = {} } = await readBody(req);
-          res.end(JSON.stringify({ reply: await chat(history.slice(-20), context) }));
-        } catch (e) {
-          if (e instanceof Anthropic.AuthenticationError) { res.statusCode = 401; res.end(JSON.stringify({ error: 'bad_key' })); return; }
-          if (e instanceof Anthropic.RateLimitError) { res.statusCode = 429; res.end(JSON.stringify({ error: 'rate_limited' })); return; }
-          console.error('[airbuddy-chat]', e);
-          res.statusCode = 500;
-          res.end(JSON.stringify({ error: 'server_error' }));
-        }
-      });
+      if (env.GEMINI_API_KEY) process.env.GEMINI_API_KEY = env.GEMINI_API_KEY;
+      server.middlewares.use('/api/chat', handleChat);
     },
   };
 }
