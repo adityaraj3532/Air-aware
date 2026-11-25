@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getAqiLevel } from '../utils/aqi.js';
 
-const W = 760, H = 240, PAD = { l: 44, r: 20, t: 24, b: 34 };
+const PAD = { l: 44, r: 20, t: 24, b: 34 };
 const BANDS = [
   { v: 50, label: 'Good' },
   { v: 100, label: 'Satisfactory' },
@@ -22,6 +22,19 @@ function smooth(pts) {
 
 export default function WeekTrend({ weekly = [], todayAqi }) {
   const [hover, setHover] = useState(null);
+  const boxRef = useRef(null);
+  const [W, setW] = useState(760);
+  const [H, setH] = useState(240);
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => {
+      const w = Math.round(e.contentRect.width);
+      if (w > 0) { setW(w); setH(w < 700 ? 200 : 240); }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   // Drop days with missing forecast data (they compute to ~0)
   const days = weekly.filter((d) => d.aqi > 5);
   if (!days.length) return <p className="week-empty">Weekly data unavailable.</p>;
@@ -51,8 +64,8 @@ export default function WeekTrend({ weekly = [], todayAqi }) {
         <div className="wt-kpi"><small>Days above 100</small><b>{unhealthy}<i>/{days.length}</i></b><span>{unhealthy ? 'Limit exposure' : 'All clear'}</span></div>
       </div>
 
-      <div className="wt-chart">
-        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="Daily average AQI this week" onMouseLeave={() => setHover(null)}>
+      <div className="wt-chart" ref={boxRef}>
+        <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img" aria-label="Daily average AQI this week" onMouseLeave={() => setHover(null)}>
           <defs>
             <linearGradient id="wt-stroke" x1="0" y1={y(0)} x2="0" y2={y(top)} gradientUnits="userSpaceOnUse">
               {[[0, '#1da463'], [100, '#2da866'], [101, '#d97706'], [200, '#d97706'], [201, '#ea580c'], [300, '#ea580c'], [301, '#dc2626'], [500, '#7f1d1d']]

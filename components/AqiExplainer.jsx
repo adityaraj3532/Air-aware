@@ -43,6 +43,183 @@ function answer(q, ctx) {
   return 'I can answer questions about India vs US AQI, what the levels mean, PM2.5 and PM10, and whether it is safe to go outside today. Try one of the suggestions above.';
 }
 
+// CPCB PM2.5 sub-index breakpoints: [concLo, concHi, aqiLo, aqiHi]
+const IN_PM25 = [[0, 30, 0, 50], [30, 60, 50, 100], [60, 90, 100, 200], [90, 120, 200, 300], [120, 250, 300, 400], [250, 500, 400, 500]];
+function indiaPm25Aqi(c) {
+  const row = IN_PM25.find(([, hi]) => c <= hi) || IN_PM25.at(-1);
+  const [lo, hi, a, b] = row;
+  return Math.round(a + ((Math.min(c, hi) - lo) * (b - a)) / (hi - lo));
+}
+
+const IN_BANDS = [[50, 'Good'], [100, 'Satisfactory'], [200, 'Moderate'], [300, 'Poor'], [400, 'Very Poor'], [500, 'Severe']]
+  .map(([max, name]) => ({ max, name, color: getAqiLevel(max).gaugeColor }));
+const US_BANDS = [[50, 'Good'], [100, 'Moderate'], [150, 'Sensitive'], [200, 'Unhealthy'], [300, 'Very Unhealthy'], [500, 'Hazardous']]
+  .map(([max, name]) => ({ max, name, color: getUsAqiLevel(max).color }));
+
+const PRESETS = [['🌿 Clean day', 12], ['🏙️ Typical city', 45], ['🌫️ Smoggy', 110], ['🎆 Post-Diwali', 260]];
+
+const SCALES = {
+  in: {
+    flag: '🇮🇳', name: 'India AQI', src: 'Central Pollution Control Board (CPCB)', bands: IN_BANDS,
+    facts: ['Tuned for Indian conditions, so less strict', 'PM2.5 up to 60 µg/m³ is still “Satisfactory”', 'Looks at up to 8 pollutants', 'Best for matching Indian news and government alerts'],
+  },
+  us: {
+    flag: '🇺🇸', name: 'US AQI', src: 'US Environmental Protection Agency (EPA)', bands: US_BANDS,
+    facts: ['Stricter, so it warns you earlier', 'PM2.5 of 35 µg/m³ is already “Unhealthy for Sensitive Groups”', 'Used by most global air-quality apps', 'Best for sensitive people and comparing countries'],
+  },
+};
+
+function ScaleBar({ bands, value, color }) {
+  let prev = 0;
+  return (
+    <div className="ac-bar">
+      {bands.map((b) => {
+        const w = ((b.max - prev) / 500) * 100;
+        prev = b.max;
+        return <span key={b.max} style={{ width: `${w}%`, background: b.color }} title={b.name} />;
+      })}
+      <i className="ac-pin" style={{ left: `${Math.min(value, 500) / 5}%`, borderColor: color }} />
+    </div>
+  );
+}
+
+const INFO = {
+  in: { title: 'India AQI', src: 'Central Pollution Control Board', facts: ['Built for Indian conditions and less strict', 'PM2.5 up to 60 µg/m³ still counts as “Satisfactory”', 'Matches Indian news and government alerts'] },
+  us: { title: 'US AQI', src: 'Environmental Protection Agency', facts: ['Stricter, so it warns you sooner', 'PM2.5 of 35 µg/m³ is already “Unhealthy for Sensitive Groups”', 'Best for sensitive people and for comparing with other countries'] },
+};
+
+function Scale({ label, bands, value }) {
+  let prev = 0;
+  return (
+    <div className="ac2-scale">
+      <small>{label}</small>
+      <div className="ac2-track">
+        {bands.map((b) => { const w = ((b.max - prev) / 500) * 100; prev = b.max; return <span key={b.max} style={{ width: `${w}%`, background: b.color }} title={b.name} />; })}
+        <div className="ac2-pin" style={{ left: `${Math.min(value, 500) / 5}%` }}><em>{value}</em></div>
+      </div>
+    </div>
+  );
+}
+
+function AqiCompare({ liveIn, liveUs }) {
+  const inLvl = getAqiLevel(liveIn);
+  const usLvl = getUsAqiLevel(liveUs);
+  const score = (label, v, cat, color) => (
+    <div className="ac2-num">
+      <small>{label}</small>
+      <b>{v}</b>
+      <span className="ac2-badge" style={{ background: color }}>{cat}</span>
+    </div>
+  );
+  return (
+    <>
+      <div className="ac2-card">
+        <div className="ac2-nums">
+          {score('India AQI (CPCB)', liveIn, inLvl.category, inLvl.gaugeColor)}
+          {score('US AQI (EPA)', liveUs, usLvl.category, usLvl.color)}
+        </div>
+        <Scale label="India scale" bands={IN_BANDS} value={liveIn} />
+        <Scale label="US scale" bands={US_BANDS} value={liveUs} />
+        <div className="ac2-axis">{[0, 100, 200, 300, 400, 500].map((n) => <span key={n}>{n}</span>)}</div>
+        <p className="ac2-note">Both pins sit on the same pollution level. The US scale reaches “Unhealthy” sooner, so it warns you earlier.</p>
+      </div>
+
+      <div className="ac2-info">
+        {['in', 'us'].map((k) => (
+          <div key={k} className="ac2-card">
+            <h3>{INFO[k].title}</h3>
+            <p className="ac2-src">{INFO[k].src}</p>
+            <ul>{INFO[k].facts.map((f) => <li key={f}>{f}</li>)}</ul>
+            <div className="ac2-chips">
+              {(k === 'in' ? IN_BANDS : US_BANDS).map((b) => <span key={b.max} style={{ background: b.color }}>{b.name}</span>)}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p className="ac2-tip">For the same air, the US number is usually higher. Switch between them with the India AQI / US AQI buttons next to AirBuddy.</p>
+    </>
+  );
+}
+
+function verdict(usAqi) {
+  if (usAqi <= 50) return ['😊', 'Great air for everyone'];
+  if (usAqi <= 100) return ['🙂', 'Fine for most people'];
+  if (usAqi <= 150) return ['😐', 'Sensitive people: take it easy outside'];
+  if (usAqi <= 200) return ['😷', 'Limit time outdoors'];
+  return ['🚫', 'Stay indoors if you can'];
+}
+
+function ScoreCard({ k, aqi, cat, color, open, onToggle }) {
+  const bands = SCALES[k].bands;
+  const [hov, setHov] = useState(null);
+  let prev = 0;
+  const segs = bands.map((b) => { const lo = prev; prev = b.max; return { ...b, lo: lo ? lo + 1 : 0, w: ((b.max - lo) / 500) * 100 }; });
+  const show = hov ?? segs.find((b) => aqi <= b.max);
+  return (
+    <div className={`ac-score ${open ? 'on' : ''}`} style={{ '--c': color }}>
+      <button type="button" className="ac-score-head" onClick={onToggle} aria-expanded={open}>
+        <small>{SCALES[k].flag} {SCALES[k].name}</small>
+        <b>{aqi}</b>
+        <span>{cat}</span>
+        <em className="ac-more">{open ? 'Hide levels ▴' : 'See all levels ▾'}</em>
+      </button>
+      <div className="ac-bar" onMouseLeave={() => setHov(null)}>
+        {segs.map((b) => (
+          <span key={b.max} style={{ width: `${b.w}%`, background: b.color }} onMouseEnter={() => setHov(b)} onClick={() => setHov(b)} />
+        ))}
+        <i className="ac-pin" style={{ left: `${Math.min(aqi, 500) / 5}%`, borderColor: color }} />
+      </div>
+      <div className="ac-bar-label"><span>0</span><span style={{ color: show.color }}>{hov ? '' : 'You are here: '}<strong>{show.name}</strong> {show.lo}–{show.max}</span><span>500</span></div>
+      {open && (
+        <div className="ac-levels">
+          {segs.map((b) => (
+            <div key={b.max} className={`ac-level ${aqi >= b.lo && aqi <= b.max ? 'on' : ''}`} style={{ '--c': b.color }}>
+              <i /> <span>{b.name}</span> <small>{b.lo}–{b.max}</small>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AqiSimple({ livePm, liveIn, liveUs, place }) {
+  const [pm, setPm] = useState(null);
+  const inAqi = pm == null ? liveIn : indiaPm25Aqi(pm);
+  const usAqi = pm == null ? liveUs : calculateUsAqi(pm, 0);
+  const inLvl = getAqiLevel(inAqi);
+  const usLvl = getUsAqiLevel(usAqi);
+  const [emoji, msg] = verdict(usAqi);
+  const [open, setOpen] = useState(null);
+  const tog = (k) => setOpen((o) => (o === k ? null : k));
+  return (
+    <div className="ac">
+      <p className="ac-when">{pm == null ? <>Right now in <b>{place}</b></> : <>If PM2.5 were <b>{pm} µg/m³</b></>}</p>
+      <div className="ac-scores">
+        <ScoreCard k="in" aqi={inAqi} cat={inLvl.category} color={inLvl.gaugeColor} open={open === 'in'} onToggle={() => tog('in')} />
+        <ScoreCard k="us" aqi={usAqi} cat={usLvl.category} color={usLvl.color} open={open === 'us'} onToggle={() => tog('us')} />
+        <div className="ac-vs" aria-hidden="true">=</div>
+      </div>
+      <div className="ac-verdict"><span>{emoji}</span><b>{msg}</b></div>
+      <div className="ac-use">
+        <div><b>🇮🇳 Use India AQI</b> to match Indian news and government alerts.</div>
+        <div><b>🇺🇸 Use US AQI</b> if you have asthma, kids or elders — it warns earlier.</div>
+      </div>
+      <details className="ac-sim">
+        <summary>🎚️ Play with it: see how both numbers change</summary>
+        <input aria-label="PM2.5 level" type="range" min="0" max="300" value={pm ?? Math.round(livePm)} onChange={(e) => setPm(+e.target.value)} />
+        <div className="ac-presets">
+          {PRESETS.map(([label, v]) => (
+            <button key={v} type="button" className={pm === v ? 'on' : ''} onClick={() => setPm(v)}>{label}</button>
+          ))}
+          {pm != null && <button type="button" className="ac-reset" onClick={() => setPm(null)}>↺ Back to live</button>}
+        </div>
+      </details>
+    </div>
+  );
+}
+
 export default function AqiExplainer({ data, location }) {
   const inAqi = data.aqi;
   const usAqi = calculateUsAqi(data.pm25, data.pm10);
@@ -90,36 +267,6 @@ export default function AqiExplainer({ data, location }) {
 
   return (
     <section className="card aqi-learn">
-      <h2 className="card-title">India AQI vs US AQI — what's the difference?</h2>
-      <p className="aqi-learn-lead">
-        <b>Same air, different rulers.</b> Both turn pollution into a 0–500 score, but each country sets its own cut-offs.
-        Right now in {ctx.place}: <b>India {inAqi}</b> ({ctx.inCat}) · <b>US {usAqi}</b> ({ctx.usCat}).
-      </p>
-
-      <div className="aqi-compare">
-        <div>
-          <h3>🇮🇳 India AQI</h3>
-          <p className="aqi-src">Central Pollution Control Board (CPCB)</p>
-          <ul>
-            <li>Made for Indian conditions and less strict</li>
-            <li>PM2.5 up to 60 µg/m³ = “Satisfactory”</li>
-            <li>Good · Satisfactory · Moderate · Poor · Very Poor · Severe</li>
-            <li>Best for matching Indian news and government alerts</li>
-          </ul>
-        </div>
-        <div>
-          <h3>🇺🇸 US AQI</h3>
-          <p className="aqi-src">US Environmental Protection Agency (EPA)</p>
-          <ul>
-            <li>Stricter, so it warns you earlier</li>
-            <li>PM2.5 of 35 µg/m³ is already “Unhealthy for Sensitive Groups”</li>
-            <li>Good · Moderate · USG · Unhealthy · Very Unhealthy · Hazardous</li>
-            <li>Best for sensitive people and comparing with other countries</li>
-          </ul>
-        </div>
-      </div>
-      <p className="aqi-tip">💡 For the same air, the US number is usually <b>higher</b>. Switch between them with the India AQI / US AQI buttons next to AirBuddy.</p>
-
       <div className="aqi-chat">
         <h3>💬 Ask AirBuddy</h3>
         <div className="chat-log" ref={logRef} aria-live="polite">
@@ -138,6 +285,9 @@ export default function AqiExplainer({ data, location }) {
           <button className="primary" type="submit" disabled={busy}>{busy ? '…' : 'Send'}</button>
         </form>
       </div>
+      <h2 className="card-title">India AQI vs US AQI — what's the difference?</h2>
+      <p className="aqi-learn-lead"><b>Same air, two rulers.</b> The US scale is stricter, so its number is usually higher.</p>
+      <AqiSimple livePm={Number(data.pm25) || 0} liveIn={inAqi} liveUs={usAqi} place={ctx.place} />
     </section>
   );
 }
